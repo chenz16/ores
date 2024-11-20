@@ -13,7 +13,7 @@
   - Availability 
 
 - Opportunities  
-  - Innovation for long term
+  - Innovation for long term: eRouter
   - Ecosys, **Standardization**, DIY (for smart home grid) , refer to 4_Standardization_Initiative_Progress_Plan.md
-  - Plug and Play (with system and device level), Dis-aggregation power plane with the brain Software Defined EMS
+  - **ORES**: Plug and Play (with system and device level), Dis-aggregation power plane with the brain Software Defined EMS
   - Solution kit Blue Prints
