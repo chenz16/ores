@@ -15,7 +15,7 @@
 3. **Application Automation & Software Defined EMS**
   - Support various flexibility patterns and control types
 
-4. **AC Battery Technology Based Energy Router** 
+4. **AC Battery Technology Based Energy Router** (innovation)
   - Hardware Interface between Power Conversion Module and Control Plane.
   - Software Interface between Cascaded PCS/SMB and PCS Control System.
   - Equalization by Cylinder, Module, and Cell.
