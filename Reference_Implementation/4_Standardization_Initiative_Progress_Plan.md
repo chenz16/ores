@@ -20,6 +20,8 @@
   - Software Interface between Cascaded PCS/SMB and PCS Control System.
   - Equalization by Cylinder, Module, and Cell.
 
+5. **Interaction with VPP - Virtual Power Plant** (new)
+
 # Progress - Run Separate Components Relatively Independent
 
 1. **MicroInverter** 
