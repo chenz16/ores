@@ -10,7 +10,7 @@
 - Challenges  
   - Safety
   - Cost
-  - Reliability 
+  - Availability 
 
 - Opportunities  
   - Innovation for long term
