@@ -1,5 +1,7 @@
 # Renewable Industry in China, Challenges, Opportunities
 
+September - November 2024
+
 - Major Consumer (Home Grid) Product Manufactures in ShenZhen,China
   - Battery Packing
   - PCS Vendor: Inverter/Charger, Hybrid Inverter, MPPT
