@@ -18,4 +18,5 @@ September - November 2024
   - Innovation for long term: eRouter
   - Ecosys, **Standardization**, DIY (for smart home grid) , refer to 4_Standardization_Initiative_Progress_Plan.md
   - **ORES**: Plug and Play (with system and device level), Dis-aggregation power plane with the brain Software Defined EMS
+  - ModBus protocol v2.1/v2.2 between device and EMS
   - Solution kit Blue Prints
