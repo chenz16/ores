@@ -1,0 +1,61 @@
+/***
+please follow the python code to write a c code for notch filter
+class NotchFilter:
+    def __init__(self, fs: float, base_freq: float = 50.0, quality_factor: float = 30):
+        """
+        Initialize notch filters for harmonics of base frequency
+        
+        Args:
+            fs: Sampling frequency in Hz
+            base_freq: Base frequency (e.g., 50Hz for power line)
+            quality_factor: Q factor for filter width
+        """
+        self.fs = fs
+        self.base_freq = base_freq
+        self.quality_factor = quality_factor
+        self.harmonics = [2, 3, 4, 5, 6]  # 2nd through 6th harmonics
+        self.filters = self._create_filters()
+    
+    def _create_filters(self):
+        """Create notch filters for each harmonic"""
+        filters = []
+        for harmonic in self.harmonics:
+            freq = self.base_freq * harmonic
+            w0 = freq / (self.fs/2)  # Normalize by Nyquist frequency
+            b, a = signal.iirnotch(w0, self.quality_factor)
+            filters.append((b, a))
+        return filters
+    
+    def apply(self, data: np.ndarray) -> np.ndarray:
+        """Apply all notch filters sequentially"""
+        filtered_data = data.copy()
+        for b, a in self.filters:
+            filtered_data = signal.filtfilt(b, a, filtered_data)
+        return filtered_data
+    
+    def plot_frequency_response(self, max_freq: float = 400):
+        """Plot frequency response of the notch filters"""
+        # Create frequency array
+        freq = np.linspace(0, max_freq, 1000)
+        w = 2 * np.pi * freq / self.fs  # Angular frequency
+        
+        # Calculate combined response of all notch filters
+        h_combined = np.ones(len(freq), dtype=complex)
+        for b, a in self.filters:
+            _, h = signal.freqz(b, a, worN=w)
+            h_combined *= h
+        
+        # Plot magnitude response
+        plt.plot(freq, 20 * np.log10(np.abs(h_combined)))
+        plt.grid(True)
+        plt.xlabel('Frequency [Hz]')
+        plt.ylabel('Magnitude [dB]')
+        
+        # Add vertical lines for notch frequencies
+        for harmonic in self.harmonics:
+            freq_notch = self.base_freq * harmonic
+            plt.axvline(x=freq_notch, color='r', linestyle=':', alpha=0.3)
+            plt.text(freq_notch, plt.ylim()[0], f'{freq_notch}Hz', 
+                    rotation=90, verticalalignment='bottom')
+***/
+

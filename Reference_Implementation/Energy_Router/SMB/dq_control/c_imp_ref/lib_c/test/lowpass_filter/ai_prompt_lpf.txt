@@ -1,0 +1,8 @@
+/*** AI prompt
+please genrate test case for low pass filter of 1st order with phase delay compensation
+1. input signals if 50Hz sine wave with 3rd and 5th harmonics
+2. sampling frequency fs = 1000
+3. cutoff frequency fc = 10
+4. print the time and amplitude of the input and output signals through terminal and save to a file
+5. plot the time domain and frequency domain of the input and output signals
+**/
