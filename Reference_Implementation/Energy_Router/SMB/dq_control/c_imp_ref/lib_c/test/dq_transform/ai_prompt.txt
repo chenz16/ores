@@ -1,0 +1,30 @@
+Please write C code to test the dq_transform_1phase.h file.
+
+Test Requirements:
+1. Input Signals:
+   - Signal A: Sine wave
+     * Frequency: 50 Hz
+     * Sampling rate: 1 kHz (1000 samples/second)
+     * Amplitude: 1.0 (or specify desired amplitude)
+   - Signal B: Phase angle
+     * Matching 50 Hz rotation
+     * Range: 0 to 2π
+
+2. Test Cases:
+   a) Steady-state test:
+      - Generate 0.1 seconds of data (100 samples)
+      - Verify d,q outputs are constant for matched frequency
+
+   b) Phase offset test:
+      - Test with different phase offsets between input and angle
+      - Expected: Different steady-state d,q values
+
+3. Expected Outputs:
+   - d-component: Direct axis value
+   - q-component: Quadrature axis value
+   - Plot or print results for verification
+
+4. Verification:
+   - For matched frequency and phase:
+     * One component should be maximum
+     * Other component should be near zero

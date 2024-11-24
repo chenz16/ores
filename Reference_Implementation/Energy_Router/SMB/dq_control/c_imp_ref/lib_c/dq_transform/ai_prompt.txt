@@ -1,0 +1,19 @@
+Write a C function to implement the Park (dq) transformation for a single phase system.
+
+Input parameters:
+- alpha: float (alpha component in alpha-beta frame)
+- beta: float (beta component in alpha-beta frame)
+- theta: float (rotation angle in radians)
+
+Output:
+- d: float (direct axis component)
+- q: float (quadrature axis component)
+
+Requirements:
+- Function should perform the transformation from alpha-beta to dq frame
+- Use the standard Park transformation equations:
+  d = alpha * cos(theta) + beta * sin(theta)
+  q = -alpha * sin(theta) + beta * cos(theta)
+- No need for global variables or state storage
+- Include proper function documentation
+- Use float data type for calculations
