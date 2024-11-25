@@ -9,6 +9,7 @@
 typedef struct {
     float* time_s;
     float* current_value;  // alpha signal
+    float* current_angle;  // NEW: angle from log file
     float* beta;          // filtered result
     float* d;            // d component
     float* q;            // q component
@@ -56,6 +57,7 @@ LogData* load_log_data(const char* filename) {
     data->length = num_lines;
     data->time_s = malloc(num_lines * sizeof(float));
     data->current_value = malloc(num_lines * sizeof(float));
+    data->current_angle = malloc(num_lines * sizeof(float));
     data->beta = NULL;
     
     // Skip header and store it for verification
@@ -64,6 +66,7 @@ LogData* load_log_data(const char* filename) {
         printf("Error reading header\n");
         free(data->time_s);
         free(data->current_value);
+        free(data->current_angle);
         free(data);
         fclose(file);
         return NULL;
@@ -78,7 +81,10 @@ LogData* load_log_data(const char* filename) {
             printf("Line %d: %s", i+1, buffer);
         }
         
-        if (sscanf(buffer, "%f,%f", &data->time_s[i], &data->current_value[i]) != 2) {
+        if (sscanf(buffer, "%f,%f,%f", 
+                   &data->time_s[i], 
+                   &data->current_value[i],
+                   &data->current_angle[i]) != 3) {
             printf("Error parsing line %d: %s", i+1, buffer);
             continue;
         }
@@ -122,7 +128,8 @@ void process_signals(LogData* data) {
         data->beta[i] = beta;
         
         // Step 2: Calculate theta for current time
-        float theta = omega * data->time_s[i];
+        // float theta = omega * data->time_s[i];
+        float theta = data->current_angle[i];
         
         // Step 3: Park transform
         float d, q;
@@ -145,12 +152,13 @@ void save_data(const LogData* data, const char* filename) {
     }
     
     // Updated header to include filtered components
-    fprintf(file, "time_s,current_value,beta,d,q,filtered_d,filtered_q\n");
+    fprintf(file, "time_s,current_value,current_angle,beta,d,q,filtered_d,filtered_q\n");
     
     for (int i = 0; i < data->length; i++) {
-        fprintf(file, "%f,%f,%f,%f,%f,%f,%f\n", 
+        fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f\n", 
                 data->time_s[i], 
-                data->current_value[i], 
+                data->current_value[i],
+                data->current_angle[i],
                 data->beta[i],
                 data->d[i],
                 data->q[i],
@@ -164,6 +172,7 @@ void save_data(const LogData* data, const char* filename) {
 void cleanup_data(LogData* data) {
     free(data->time_s);
     free(data->current_value);
+    free(data->current_angle);
     free(data->beta);
     free(data->d);
     free(data->q);

@@ -1,0 +1,8 @@
+design a single phase dq controller to regulate the current from an invreter to the grid
+the controller should be able to follow the grid voltage and phase to preduce the desired current
+
+
+Assume we know:
+1. the desired current to be injected into the grid or the current drawn from the grid
+2. the grid magnitude voltage and phase measured at the inverter output
+3. estimated d, q components of the inverter output current
