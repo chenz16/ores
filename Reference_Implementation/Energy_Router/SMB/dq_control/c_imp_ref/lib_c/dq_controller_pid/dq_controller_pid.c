@@ -16,7 +16,7 @@ void DQController_Init(DQController_State* state, DQController_Params* params) {
     // Validate integral limits
     if (params->integral_max <= params->integral_min) {
         // Set default values if limits are invalid
-        params->integral_max = 1000.0f;  // Example
+        params->integral_max = 400.0f;  // Example
     }
 }
 
@@ -54,11 +54,14 @@ void DQController_Update(DQController_State* state, DQController_Params* params)
     float vd_pi = params->kp_d * error_d + state->integral_d;
     float vq_pi = params->kp_q * error_q + state->integral_q;
 
-    // Simple feed-forward terms
-    // 1. Grid voltage feed-forward for better disturbance rejection
-    // 2. Basic cross-coupling compensation
-    float vd_ff = state->vd_grid - params->omega * params->Ts * state->iq_meas;
-    float vq_ff = state->vq_grid+ params->omega * params->Ts * state->id_meas;
+    // Enhanced feed-forward terms with R, L compensation
+    float vd_ff = state->vd_grid                    // Grid voltage
+                 - params->R * state->id_meas         // Resistive drop (grid voltage drops across R)
+                 - params->L * params->omega * state->iq_meas;  // Cross-coupling (ωL*Iq)
+                
+    float vq_ff = state->vq_grid                    // Grid voltage
+                 - params->R * state->iq_meas         // Resistive drop (grid voltage drops across R)
+                 + params->L * params->omega * state->id_meas;  // Cross-coupling (ωL*Id)
 
     // Combine PI output and feed-forward terms
     state->vd_out = vd_pi + vd_ff;
