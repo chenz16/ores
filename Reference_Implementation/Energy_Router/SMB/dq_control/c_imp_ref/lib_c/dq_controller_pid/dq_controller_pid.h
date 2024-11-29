@@ -1,5 +1,5 @@
-#ifndef CONTROLLER_MODELFREE_H
-#define CONTROLLER_MODELFREE_H
+#ifndef DQ_CONTROLLER_PID_H
+#define DQ_CONTROLLER_PID_H
 
 #include <stdint.h>
 
@@ -40,4 +40,8 @@ void DQController_SetReference(DQController_State* state, float id_ref, float iq
 void DQController_UpdateMeasurements(DQController_State* state, float id_meas, float iq_meas, 
                                    float vd_grid, float vq_grid);
 
-#endif /* CONTROLLER_MODELFREE_H */
+// Add these function declarations
+float DQController_GetVoltageD(DQController_State* state);
+float DQController_GetVoltageQ(DQController_State* state);
+
+#endif /* DQ_CONTROLLER_PID_H */

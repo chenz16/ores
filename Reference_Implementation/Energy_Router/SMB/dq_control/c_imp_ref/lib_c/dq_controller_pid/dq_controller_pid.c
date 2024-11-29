@@ -1,4 +1,4 @@
-#include "controller_modelfree.h"
+#include "dq_controller_pid.h"
 
 void DQController_Init(DQController_State* state, DQController_Params* params) {
     // Initialize all state variables to zero
@@ -58,7 +58,7 @@ void DQController_Update(DQController_State* state, DQController_Params* params)
     // 1. Grid voltage feed-forward for better disturbance rejection
     // 2. Basic cross-coupling compensation
     float vd_ff = state->vd_grid - params->omega * params->Ts * state->iq_meas;
-    float vq_ff = state->vq_grid + params->omega * params->Ts * state->id_meas;
+    float vq_ff = state->vq_grid+ params->omega * params->Ts * state->id_meas;
 
     // Combine PI output and feed-forward terms
     state->vd_out = vd_pi + vd_ff;
@@ -95,4 +95,12 @@ void DQController_SetIntegralTerms(DQController_State* state, float integral_d, 
     } else {
         state->integral_q = integral_q;
     }
+}
+
+float DQController_GetVoltageD(DQController_State* state) {
+    return state->vd_out;
+}
+
+float DQController_GetVoltageQ(DQController_State* state) {
+    return state->vq_out;
 }

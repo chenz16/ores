@@ -1,0 +1,4 @@
+write a c code for a dq to pwm converter.
+the modulation index is calculated from the dq components
+modulation index = sqrt(vd^2 + vq^2) / Vdc
+modulation phase shift = atan2(vq, vd)
