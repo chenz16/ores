@@ -159,8 +159,11 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         ///调制参数跟新：输入为电压dq， 输出为调制系数和相位偏移
         modulation_result_t mod_result = dq_to_modulation_calculate(dq_voltage);
        /// 上层控制部分结束， 下面开始仿真 
-    
 
+
+       /// 调制参数更新
+       dq_voltage.vd = mod_result.vd_adjust;
+       dq_voltage.vq = mod_result.vq_adjust;
         /// /////////////////////////////////////////////////////////////
         /// 此处仿真逆变器电压波形生成，实际系统的 由PWM + 逆变器的物理反应为这部分
         if (n%params->ratio_cntlFreqReduction==0)
