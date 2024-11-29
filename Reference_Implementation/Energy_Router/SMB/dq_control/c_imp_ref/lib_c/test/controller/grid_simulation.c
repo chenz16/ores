@@ -18,7 +18,7 @@ void init_system_params(SystemParams* params) {
     params->R = 0.1f;
     params->L = 0.005f;
     params->sim_time = 1.0f;
-    params->ratio_cntlFreqReduction = 20;
+    params->ratio_cntlFreqReduction = 20; // control 频率是 sensing 频率的 1/20
     printf("Debug Ts values:\n");
     printf("Ts_plant_sim: %.6f\n", params->Ts_plant_sim);
     printf("Ts_control: %.6f\n", params->Ts_control);
@@ -70,13 +70,15 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     // Initialize controller with matching gains from Python
     DQController_Params controller_params = {
         .kp_d = 5.0f,        // Match Python kp value
-        .ki_d = 40.0f,      // Match Python ki value
+        .ki_d = 100.0f,      // Match Python ki value
         .kp_q = 5.0f,
-        .ki_q = 40.0f,
+        .ki_q = 100.0f,
         .omega = params->omega,
         .Ts = params->Ts_control,
-        .integral_max = 1000.0f,
-        .integral_min = -1000.0f
+        .integral_max =  400.0f,   // Suggested value based on 230V RMS system
+        .integral_min =  -400.0f,
+        .R = params->R,      // Use system R value (0.1 ohm)
+        .L = params->L       // Use system L value (0.005 H)
     };
 
     // Rest of initialization remains the same
