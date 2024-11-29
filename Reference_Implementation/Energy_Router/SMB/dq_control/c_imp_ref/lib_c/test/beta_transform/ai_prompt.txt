@@ -4,9 +4,3 @@ test case 1:
 2. sampling frequency is 1000Hz
 3. print the time and amplitude of the input and output signals through terminal and save to a file
 4. plot the time domain and frequency domain of the input and output signals
-
-test case 2:
-1. input signal is 50Hz sine wave with 2 - 6th harmonics
-2. sampling frequency is 1000Hz
-3. print the time and amplitude of the input and output signals through terminal and save to a file
-4. plot the time domain and frequency domain of the input and output signals

@@ -1,0 +1,4 @@
+1. Load the log_data
+2. Extract [current_value, time_s] as the alpha signal
+3. Apply two cascaded lowpass_filter_1storder filters from lib_c/lowpass_filter_1storder to create a 90-degree phase delay of the alpha signal
+4. Save the resulting signal as a new column named 'beta' in the same data structure
