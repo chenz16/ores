@@ -13,6 +13,8 @@ typedef struct {
     float Ts;            // Sampling time
     float integral_max;   // Maximum integral term value
     float integral_min;   // Minimum integral term value
+    float R;             // Estimated filter resistance [Ohm]
+    float L;             // Estimated filter inductance [H]
 } DQController_Params;
 
 // Controller state structure
