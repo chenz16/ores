@@ -11,14 +11,14 @@ void init_system_params(SystemParams* params) {
     params->signal_freq = 50.0f;
     params->plant_sim_freq = 1000000.0f; //
     params->control_update_freq = 1000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
+    params->ratio_cntlFreqReduction = 20; // control 频率是 sensing 频率的 1/20
     params->Ts_plant_sim = 1.0f / params->plant_sim_freq;
     params->Ts_control = 1.0f / params->control_update_freq;
     params->omega = 2.0f * M_PI * params->signal_freq;
     params->Vg_rms = 230.0f;
     params->R = 0.1f;
     params->L = 0.005f;
-    params->sim_time = 1.0f;
-    params->ratio_cntlFreqReduction = 20; // control 频率是 sensing 频率的 1/20
+    params->sim_time = 0.2f;
     printf("Debug Ts values:\n");
     printf("Ts_plant_sim: %.6f\n", params->Ts_plant_sim);
     printf("Ts_control: %.6f\n", params->Ts_control);
@@ -70,9 +70,9 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     // Initialize controller with matching gains from Python
     DQController_Params controller_params = {
         .kp_d = 5.0f,        // Match Python kp value
-        .ki_d = 100.0f,      // Match Python ki value
+        .ki_d = 400.0f,      // Match Python ki value
         .kp_q = 5.0f,
-        .ki_q = 100.0f,
+        .ki_q = 400.0f,
         .omega = params->omega,
         .Ts = params->Ts_control,
         .integral_max =  400.0f,   // Suggested value based on 230V RMS system

@@ -1,0 +1,33 @@
+Create a C implementation of a Phase-Locked Loop (PLL) controller with the following specifications:
+
+1. Structure:
+   - Create header (.h) and implementation (.c) files
+   - Follow modular design pattern similar to dq_controller_pid implementation
+   - Include proper include guards and documentation
+
+2. Core Functionality:
+   - Implement PI controller for phase tracking
+   - Include phase angle detection and frequency estimation
+   - Provide grid synchronization capabilities
+   - Handle single-phase input signals
+
+3. Required Functions:
+   - Initialization function to set up PLL parameters
+   - Update function for real-time phase tracking
+   - Reset/clear function
+   - Getter functions for phase angle and frequency
+   - Error handling mechanisms
+
+4. Parameters:
+   - Configurable PI gains (Kp, Ki)
+   - Sampling time
+   - Nominal frequency (e.g., 50/60 Hz)
+   - Filtering parameters if needed
+
+5. Performance Requirements:
+   - Fast phase tracking
+   - Stable operation under grid disturbances
+   - Minimal computational overhead
+   - Thread-safe implementation
+
+Please implement using standard C (C99) and follow the same coding style and error handling patterns as found in the dq_controller_pid reference implementation.

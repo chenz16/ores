@@ -12,6 +12,12 @@ void notch_filter_init(NotchFilter* filter, float fs, float base_freq, float rat
     memset(filter->b_coeffs, 0, sizeof(float) * FILTER_ORDER + 1);
     memset(filter->a_coeffs, 0, sizeof(float) * FILTER_ORDER + 1);
     
+    // Initialize state variables
+    filter->x1 = 0.0f;
+    filter->x2 = 0.0f;
+    filter->y1 = 0.0f;
+    filter->y2 = 0.0f;
+    
     notch_filter_create(filter);
 }
 
@@ -36,23 +42,16 @@ void notch_filter_create(NotchFilter* filter) {
     //        filter->a_coeffs[0], filter->a_coeffs[1], filter->a_coeffs[2]);
 }
 
-void notch_filter_apply(NotchFilter* filter, float* data, int data_length, float* output) {
-    float x1 = 0.0f, x2 = 0.0f;
-    float y1 = 0.0f, y2 = 0.0f;
+float notch_filter_apply(NotchFilter* filter, float input) {
+    // Direct form II difference equation
+    float y0 = filter->b_coeffs[0] * input + filter->b_coeffs[1] * filter->x1 + filter->b_coeffs[2] * filter->x2
+              - filter->a_coeffs[1] * filter->y1 - filter->a_coeffs[2] * filter->y2;
     
-    for (int n = 0; n < data_length; n++) {
-        float x0 = data[n];
-        
-        // Direct form II difference equation
-        float y0 = filter->b_coeffs[0] * x0 + filter->b_coeffs[1] * x1 + filter->b_coeffs[2] * x2
-                  - filter->a_coeffs[1] * y1 - filter->a_coeffs[2] * y2;
-        
-        // Update delays
-        x2 = x1;
-        x1 = x0;
-        y2 = y1;
-        y1 = y0;
-        
-        output[n] = y0;
-    }
+    // Update delays
+    filter->x2 = filter->x1;
+    filter->x1 = input;
+    filter->y2 = filter->y1;
+    filter->y1 = y0;
+    
+    return y0;
 }

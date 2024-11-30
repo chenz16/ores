@@ -15,6 +15,11 @@ typedef struct {
 // Initialize the filter with sampling frequency (fs) and cutoff frequency (fc)
 static inline void lpf_init(LowPassFilter1st* filter, float fs, float fc) {
     const float pi = 3.14159265359f;
+
+    if(fc > fs/2.0f) {
+        printf("LPF Error - Cutoff frequency is greater than half the sampling frequency\n");
+        exit(1);
+    }
     
     // Pre-warp the cutoff frequency
     float wc = 2.0f * fs * tanf(pi * fc / fs);
@@ -39,7 +44,7 @@ static inline float lpf_process(LowPassFilter1st* filter, float input) {
     // Update state variables
     filter->prev_input = input;
     filter->prev_output = output;
-    
+
     return output;
 }
 
