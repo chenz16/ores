@@ -1,0 +1,26 @@
+Create a C implementation of a Phase-Locked Loop (PLL) phase detector with the following specifications:
+
+1. Input requirements:
+   - Grid voltage measurements (alpha)
+   - phase error with noise
+
+2. Core functionality:
+   - Multiply grid measurements with VCO outputs to detect phase difference
+   - Implement phase detection using multiplication/mixing principle
+   - Output should indicate whether VCO phase leads or lags the input signal
+
+3. Implementation details:
+   - Use fixed-point arithmetic for embedded systems compatibility
+   - Minimize computational complexity
+   - Include proper error handling
+   - Implement as a reusable function/module
+
+4. Output:
+   - Phase error signal indicating lead/lag relationship
+
+5. Reference:
+   - Base implementation on the existing Python code in this folder
+   - Maintain similar function signatures where applicable
+   - Preserve the same mathematical approach
+
+Please provide the implementation with clear comments explaining the algorithm steps and any important considerations for embedded systems.
