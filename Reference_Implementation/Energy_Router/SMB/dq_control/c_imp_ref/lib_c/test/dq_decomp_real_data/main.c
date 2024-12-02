@@ -4,7 +4,7 @@
 #include "../../beta_transform/beta_transform_1p.h"
 #include "../../dq_transform/dq_transform_1phase.h"
 #include "../../lowpass_filter_1storder/lowpass_filter_1storder.h"
-
+#include "../../dq_to_modulation/dq_to_modulation.h"
 // Structure to hold the log data
 typedef struct {
     float* time_s;
@@ -15,6 +15,7 @@ typedef struct {
     float* q;            // q component
     float* filtered_d;   // filtered d component
     float* filtered_q;   // filtered q component
+    float* computed_angle;  // NEW: only addition to struct
     int length;
 } LogData;
 
@@ -106,6 +107,7 @@ void process_signals(LogData* data) {
     data->q = malloc(data->length * sizeof(float));
     data->filtered_d = malloc(data->length * sizeof(float));
     data->filtered_q = malloc(data->length * sizeof(float));
+    data->computed_angle = malloc(data->length * sizeof(float));
     
     // Initialize transforms and filters
     BetaTransform_1p beta_transform;
@@ -140,6 +142,15 @@ void process_signals(LogData* data) {
         // Step 4: Apply low-pass filtering
         data->filtered_d[i] = lpf_process(&filter_d, d);
         data->filtered_q[i] = lpf_process(&filter_q, q);
+        
+        // Calculate modulation and get phase shift
+        dq_voltage_t dq_voltage = {
+            .vd = data->d[i],
+            .vq = data->q[i],
+            .vdc = 400.0f
+        };
+        modulation_result_t modulation_result = dq_to_modulation_calculate(dq_voltage);
+        data->computed_angle[i] = modulation_result.phase_shift / M_PI;
     }
 }
 
@@ -151,11 +162,11 @@ void save_data(const LogData* data, const char* filename) {
         return;
     }
     
-    // Updated header to include filtered components
-    fprintf(file, "time_s,current_value,current_angle,beta,d,q,filtered_d,filtered_q\n");
+    // Updated header with new column
+    fprintf(file, "time_s,current_value,current_angle,beta,d,q,filtered_d,filtered_q,computed_angle\n");
     
     for (int i = 0; i < data->length; i++) {
-        fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f\n", 
+        fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f\n", 
                 data->time_s[i], 
                 data->current_value[i],
                 data->current_angle[i],
@@ -163,7 +174,8 @@ void save_data(const LogData* data, const char* filename) {
                 data->d[i],
                 data->q[i],
                 data->filtered_d[i],
-                data->filtered_q[i]);
+                data->filtered_q[i],
+                data->computed_angle[i]);
     }
     
     fclose(file);
@@ -178,6 +190,7 @@ void cleanup_data(LogData* data) {
     free(data->q);
     free(data->filtered_d);
     free(data->filtered_q);
+    free(data->computed_angle);
     free(data);
 }
 

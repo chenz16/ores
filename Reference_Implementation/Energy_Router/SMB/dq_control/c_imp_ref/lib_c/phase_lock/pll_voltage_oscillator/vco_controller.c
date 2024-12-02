@@ -8,7 +8,8 @@ extern volatile int g_signal_valid;
 vco_error_t vco_controller_init(vco_controller_t* vco, 
                                float ts, 
                                float nominal_freq,
-                               float k0) {
+                               float k0, 
+                               float initial_phase) {
     if (!vco) return VCO_ERROR_NULL_POINTER;
     if (ts <= 0.0f || nominal_freq <= 0.0f || k0 <= 0.0f) 
         return VCO_ERROR_INVALID_PARAMETER;
@@ -18,8 +19,8 @@ vco_error_t vco_controller_init(vco_controller_t* vco,
     vco->k0 = k0;
     
     // Initialize states
-    vco->phase = 0.0f;
-    vco->phase_nominal = 0.0f;
+    vco->phase = initial_phase - 2.0f * M_PI * nominal_freq * ts;
+    // vco->phase_nominal = 0.0f;
     vco->phase_correction = 0.0f;
     vco->frequency = nominal_freq;
     vco->freq_correction = 0.0f;
@@ -44,7 +45,7 @@ vco_error_t vco_controller_reset(vco_controller_t* vco) {
     if (!vco) return VCO_ERROR_NULL_POINTER;
     
     vco->phase = 0.0f;
-    vco->phase_nominal = 0.0f;
+    // vco->phase_nominal = 0.0f;
     vco->phase_correction = 0.0f;
     vco->frequency = vco->nominal_freq;
     vco->freq_correction = 0.0f;
@@ -67,4 +68,8 @@ float vco_controller_get_phase(const vco_controller_t* vco) {
 
 float vco_controller_get_frequency(const vco_controller_t* vco) {
     return vco->frequency;
+}
+
+void vco_controller_reset_init_phase(vco_controller_t* vco, float initial_phase) {
+    vco->phase = initial_phase;
 }

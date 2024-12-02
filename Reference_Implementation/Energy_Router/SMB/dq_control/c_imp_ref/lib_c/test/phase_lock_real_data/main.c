@@ -94,13 +94,14 @@ int test_pll(void) {
     int result;
     
     // PLL control parameters
-    float kd = 1.0f/325.0f;     // Phase detector gain
-    float kp = 1.5f;            // Match Python's gain
-    float ki = 0.5f;            // Match Python's gain
+    float kd = 1.0f/3.0f;     // Phase detector gain
+    float kp = 2.0f;            // Match Python's gain
+    float ki = 10.0f;            // Match Python's gain
     float lpf_cutoff = 5.0f;    // Match Python's VCO LPF
     float freq_max = 55.0f;     
     float freq_min = 45.0f;     
-    float k0 = 50.0f;           // Match Python's VCO gain
+    float k0 = 1.0f;           // Match Python's VCO gain
+    float phase_0 = 0.0f;
     
     // Initialize notch filter configuration
     int notch_config = NOTCH_2ND_ORDER | NOTCH_3RD_ORDER;
@@ -108,24 +109,6 @@ int test_pll(void) {
         0.90f, 0.90f, 0.90f, 0.90f, 0.90f
     };
     
-    // Initialize PLL with all required parameters
-    result = pll_init(&pll, 
-                     SAMPLING_FREQ,
-                     NOMINAL_FREQ,
-                     notch_ratios,
-                     notch_config,
-                     lpf_cutoff,
-                     kd,
-                     kp,
-                     ki,
-                     freq_max,
-                     freq_min,
-                     k0);
-                     
-    if (result != PLL_SUCCESS) {
-        printf("PLL initialization failed with error code: %d\n", result);
-        return -1;
-    }
 
     // Read log data
     LogData* log_data;
@@ -148,10 +131,33 @@ int test_pll(void) {
     // Write header
     fprintf(fp, "Time(s)\tGrid_V\tPD_Err\tReal_Freq\tEst_Freq\tEst_Phase\tTrue_Phase_Err\tNotch_Filter_Out\tLPF_Out\tControl_Signal\tcorrection_freq\n");
     
+
+    // Initialize PLL with all required parameters
+    // phase_0 =  log_data[0].current_angle;
+
+    result = pll_init(&pll, 
+                     SAMPLING_FREQ,
+                     NOMINAL_FREQ,
+                     notch_ratios,
+                     notch_config,
+                     lpf_cutoff,
+                     kd,
+                     kp,
+                     ki,
+                     freq_max,
+                     freq_min,
+                     k0,
+                     phase_0);
+                     
+    if (result != PLL_SUCCESS) {
+        printf("PLL initialization failed with error code: %d\n", result);
+        return -1;
+    }
+
+
     // Main test loop
     float est_phase = 0.0f;
     float true_phase_error = 0.0f, pd_error = 0.0f;
-    float phase_0 =  log_data[0].current_angle;
     
     // printf("Estimated phase: %f\n",  pll.output_vco_phase);
     // exit(0);
@@ -159,22 +165,26 @@ int test_pll(void) {
    total_samples = num_log_samples;
     for (int i = 0; i < total_samples; i++) {
         // Use measured values instead of simulated ones
-        float grid_voltage = log_data[i].current_val;
-        float grid_phase = log_data[i].current_angle - phase_0;
+        float signal_t = log_data[i].current_val;
+        float gt_phase = log_data[i].current_angle;
         
-        est_phase = pll.output_vco_phase;
+        // est_phase = pll.output_vco_phase;
         
         // Update PLL
-        pll_update(&pll, grid_voltage);
-        
-        true_phase_error = fmod(grid_phase - est_phase, 2.0f * M_PI);
+        pll_update(&pll, signal_t);
+        // 
+        est_phase = pll.output_vco_phase;
+
+        true_phase_error = fmod(est_phase - gt_phase, 2.0f * M_PI);
         if (true_phase_error > M_PI) {
             true_phase_error -= 2.0f * M_PI;
         } else if (true_phase_error < -M_PI) {
             true_phase_error += 2.0f * M_PI;
         }
+
+        true_phase_error /=  M_PI;
         printf("True phase error: %f\n", true_phase_error);
-        printf("Grid phase: %f\n", grid_phase);
+        printf("Grid phase: %f\n", gt_phase);
         printf("Est phase: %f\n", est_phase);
 
         pd_error = pll.output_phase_detector;
@@ -182,7 +192,7 @@ int test_pll(void) {
         // Write data to file
         fprintf(fp, "%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\t%.6f\n",
                log_data[i].time,            // Time
-               grid_voltage,                // Grid voltage
+               signal_t,                // Grid voltage
                pd_error,                    // Phase detector error
                NOMINAL_FREQ,                // Real frequency
                pll.output_vco_applied_freq, // Estimated frequency

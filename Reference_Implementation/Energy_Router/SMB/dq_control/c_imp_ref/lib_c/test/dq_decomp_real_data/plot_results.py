@@ -14,8 +14,8 @@ last_time = df['time_s'].max()
 start_time = last_time - time_window
 df_filtered = df[df['time_s'] >= start_time].copy()
 
-# Create figure with 3 subplots
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(12, 10))
+# Create figure with 4 subplots
+fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 12))
 
 # Plot 1: Alpha-Beta
 ax1.plot(df_filtered['time_s'], df_filtered['current_value'], label='Alpha', color='blue')
@@ -74,6 +74,16 @@ else:
                 transform=ax.transAxes)
         ax.set_xticks([])
         ax.set_yticks([])
+
+# Add Plot 4: Angle Comparison
+# ax4.plot(df_filtered['time_s'], df_filtered['current_angle'], label='Original Angle', color='blue')
+ax4.plot(df_filtered['time_s'], df_filtered['computed_angle'], label='Computed Angle', 
+         color='red', linestyle='--')
+ax4.set_xlabel('Time (s)')
+ax4.set_ylabel('Angle (x pi)')
+ax4.set_title('Angle Comparison (Last 200ms)')
+ax4.grid(True)
+ax4.legend()
 
 plt.tight_layout()
 plt.savefig('dq_transform_results.png', dpi=300, bbox_inches='tight')
