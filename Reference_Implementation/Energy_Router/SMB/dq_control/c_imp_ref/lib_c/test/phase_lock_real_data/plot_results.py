@@ -24,7 +24,7 @@ except Exception as e:
     sys.exit(1)
 
 time = data[:, 0]
-grid_v = data[:, 1]
+curr_measur = data[:, 1]
 pd_err = data[:, 2]
 real_freq = data[:, 3]
 est_freq = data[:, 4]
@@ -40,8 +40,8 @@ fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(12, 15))
 # fig.suptitle('PLL Performance Analysis')
 
 # Grid Voltage
-ax1.plot(time, grid_v, label='Grid Voltage')
-ax1.set_ylabel('Voltage (V)')
+ax1.plot(time, curr_measur, label='Current(A)')
+ax1.set_ylabel('Current (A)')
 # ax1.set_title('Grid Voltage')
 ax1.grid(True)
 ax1.legend()
@@ -73,7 +73,8 @@ ax4.legend()
 
 # Phase Error
 ax5.plot(time, true_phase_err, label='True Phase Error')
-ax5.set_ylabel('Phase Error (rad)')
+ax5.set_ylabel('Phase Error (x pi)')
+ax5.set_ylim(-0.9, -0.8)
 # ax5.set_title('True Phase Error')
 ax5.grid(True)
 ax5.legend()

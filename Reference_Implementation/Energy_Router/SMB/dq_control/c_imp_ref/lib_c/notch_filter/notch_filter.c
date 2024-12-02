@@ -35,11 +35,6 @@ void notch_filter_create(NotchFilter* filter) {
     filter->a_coeffs[1] = -2.0f * r * cos_w0;  // a1
     filter->a_coeffs[2] = r * r;               // a2
     
-    // printf("\nNotch Filter (%.1f Hz):\n", filter->base_freq);
-    // printf("b: [%.6f, %.6f, %.6f]\n", 
-    //        filter->b_coeffs[0], filter->b_coeffs[1], filter->b_coeffs[2]);
-    // printf("a: [%.6f, %.6f, %.6f]\n", 
-    //        filter->a_coeffs[0], filter->a_coeffs[1], filter->a_coeffs[2]);
 }
 
 float notch_filter_apply(NotchFilter* filter, float input) {

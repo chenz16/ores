@@ -23,7 +23,8 @@ int pll_init(PLL* pll,
             float ki,
             float freq_max,
             float freq_min,
-            float k0) {
+            float k0, 
+            float initial_phase) {
     
     if (!pll) return PLL_ERROR_NULL_POINTER;
     // Only check notch_ratios if we have active notches
@@ -59,14 +60,15 @@ int pll_init(PLL* pll,
     }
     
     // Initialize lowpass filter
-    lpf_init(&pll->error_lpf, sampling_freq, lpf_cutoff_freq);
+    // lpf_init(&pll->error_lpf, sampling_freq, lpf_cutoff_freq);
+    lpf_dyn_coeff_init(&pll->error_lpf, sampling_freq, 1.0f*lpf_cutoff_freq, lpf_cutoff_freq);
     // Initialize PI controller
     pi_controller_init(&pll->pi_controller, kp, ki, pll->ts, 
                       freq_max - nominal_freq, 
                       freq_min - nominal_freq);
     
     // Initialize VCO with k0
-    vco_controller_init(&pll->vco, pll->ts, nominal_freq, k0);
+    vco_controller_init(&pll->vco, pll->ts, nominal_freq, k0, initial_phase);
 
     pll->output_phase_detector = pll->phase_detector.phase_error;
     pll->output_notch_filter = 0.0;
@@ -98,6 +100,11 @@ int pll_update(PLL* pll, float grid_voltage) {
     // printf("  VCO Applied Freq:      %.4f\n", pll->output_vco_applied_freq);
     // printf("  VCO Phase:             %.4f\n\n", pll->output_vco_phase);
 
+    vco_controller_update(&pll->vco, pll->output_pi);
+    pll->output_vco_correction_freq = pll->vco.freq_correction;
+    pll->output_vco_applied_freq = pll->vco.frequency;
+    pll->output_vco_phase = pll->vco.phase;
+
     float vco_cos = cosf(vco_controller_get_phase(&pll->vco));
     pd_update(&pll->phase_detector, 
               grid_voltage, 
@@ -106,15 +113,12 @@ int pll_update(PLL* pll, float grid_voltage) {
 
     pll_apply_notch_filter(pll, pll->output_phase_detector);
     // pll->output_notch_filter = pll->output_phase_detector;
-    pll->output_lpf = lpf_process(&pll->error_lpf, pll->output_notch_filter);
-
+    // pll->output_lpf = lpf_process(&pll->error_lpf, pll->output_notch_filter);
+    pll->output_lpf = lpf_dyn_coeff_process(&pll->error_lpf, pll->output_notch_filter);
     pi_controller_update(&pll->pi_controller, pll->output_lpf);
     pll->output_pi = pll->pi_controller.control_signal;
 
-    vco_controller_update(&pll->vco, pll->output_pi);
-    pll->output_vco_correction_freq = pll->vco.freq_correction;
-    pll->output_vco_applied_freq = pll->vco.frequency;
-    pll->output_vco_phase = pll->vco.phase;
+
     
     // Print values after update
     // printf("After PLL Update:\n");

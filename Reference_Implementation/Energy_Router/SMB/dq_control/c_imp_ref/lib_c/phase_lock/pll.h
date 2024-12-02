@@ -7,6 +7,7 @@
 #include "pll_voltage_oscillator/vco_controller.h"  // Should define vco_controller_t
 #include "../notch_filter/notch_filter.h"          // Should define notch_filter_t
 #include "../lowpass_filter_1storder/lowpass_filter_1storder.h"  // Should define lowpass_filter_1storder_t
+#include "../lowpass_filter_1storder/lowpass_filter_1storder_dyn_coeff.h"
 
 // Error codes
 #define PLL_SUCCESS 0
@@ -36,7 +37,9 @@ typedef struct {
     
     PhaseDetector phase_detector;
     NotchFilter error_notch[MAX_NOTCH_FILTERS];
-    LowPassFilter1st error_lpf;
+    // LowPassFilter1st error_lpf;
+    LowPassFilter1st_dyn_coeff error_lpf;
+
     pi_controller_t pi_controller;
     vco_controller_t vco;
     
@@ -65,7 +68,8 @@ int pll_init(PLL* pll,
             float ki,
             float freq_max,
             float freq_min,
-            float k0);
+            float k0, 
+            float initial_phase);
 
 void pll_cleanup(PLL* pll);         // New cleanup function
 int pll_update(PLL* pll, float grid_voltage);

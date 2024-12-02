@@ -21,7 +21,7 @@ typedef struct {
     
     // States
     float phase;           // Total phase (nominal + correction) (radians)
-    float phase_nominal;   // Phase from nominal frequency (radians)
+    // float phase_nominal;   // Phase from nominal frequency (radians)
     float phase_correction;// Phase from frequency correction (radians)
     float frequency;       // Total frequency (nominal + correction) (Hz)
     float freq_correction; // Frequency adjustment from control signal (Hz)
@@ -38,7 +38,8 @@ typedef struct {
 vco_error_t vco_controller_init(vco_controller_t* vco, 
                                float ts, 
                                float nominal_freq,
-                               float k0);
+                               float k0, 
+                               float initial_phase);
 
 /**
  * @brief Update VCO state with new control signal
@@ -76,5 +77,7 @@ float vco_controller_get_phase(const vco_controller_t* vco);
  * @return Current total frequency in Hz
  */
 float vco_controller_get_frequency(const vco_controller_t* vco);
+
+void vco_controller_reset_init_phase(vco_controller_t* vco, float initial_phase);
 
 #endif /* VCO_CONTROLLER_H */

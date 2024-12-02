@@ -3,26 +3,36 @@
 echo "Current directory: $(pwd)"
 echo "Building program..."
 
-# Create build directory if it doesn't exist
-mkdir -p build
+# Clean up previous build
+rm -rf obj
+rm -f dq_decomp_real_data
+rm -f dq_to_modulation.*
 
-# Clean everything first
-rm -rf build/*
+# Copy required files locally
+cp ../../dq_to_modulation/dq_to_modulation.* .
 
-# Compile with assembly output preserved
-echo "=== Compiling main program ==="
-gcc -o build/process_data \
-    main.c \
-    ../../dq_transform/dq_transform_1phase.c \
-    ../../beta_transform/beta_transform_1p.c \
-    -I../../ \
-    -lm
+# Create object files directory
+mkdir -p obj
+
+# Compile each file
+gcc -c dq_to_modulation.c -I. -o obj/dq_to_modulation.o
+gcc -c ../../beta_transform/beta_transform_1p.c -I../../ -o obj/beta_transform_1p.o
+gcc -c ../../dq_transform/dq_transform_1phase.c -I../../ -o obj/dq_transform_1phase.o
+gcc -c main.c -I. -I../../ -o obj/main.o
+
+# Link all object files
+gcc obj/beta_transform_1p.o obj/dq_transform_1phase.o obj/dq_to_modulation.o obj/main.o -o dq_decomp_real_data -lm
 
 if [ $? -eq 0 ]; then
     echo "Build successful!"
-    echo "=== Running process_data ==="
-    ./build/process_data
-    echo "=== Now run: python3 plot_results.py ==="
+    ./dq_decomp_real_data
+    
+    # Plot using Python (if available)
+    if command -v python3 &> /dev/null; then
+        python3 plot_results.py
+    else
+        echo "Python not found. Please plot log_data_with_beta.csv manually."
+    fi
 else
     echo "Build failed!"
     exit 1
