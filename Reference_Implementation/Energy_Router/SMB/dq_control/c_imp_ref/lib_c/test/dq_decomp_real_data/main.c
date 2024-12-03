@@ -131,26 +131,26 @@ void process_signals(LogData* data) {
         
         // Step 2: Calculate theta for current time
         // float theta = omega * data->time_s[i];
-        float theta = data->current_angle[i];
+        float theta    = data->current_angle[i];
+        float theta_dq = theta - M_PI/2.0;
         
         // Step 3: Park transform
         float d, q;
-        dq_transform_1phase(data->current_value[i], beta, theta, &d, &q);
+        dq_transform_1phase(data->current_value[i], beta, theta_dq, &d, &q);
         data->d[i] = d;
         data->q[i] = q;
         
         // Step 4: Apply low-pass filtering
         data->filtered_d[i] = lpf_process(&filter_d, d);
         data->filtered_q[i] = lpf_process(&filter_q, q);
-        
-        // Calculate modulation and get phase shift
+
         dq_voltage_t dq_voltage = {
-            .vd = data->d[i],
-            .vq = data->q[i],
+            .vd = data->filtered_d[i],
+            .vq = data->filtered_q[i],
             .vdc = 400.0f
         };
-        modulation_result_t modulation_result = dq_to_modulation_calculate(dq_voltage);
-        data->computed_angle[i] = modulation_result.phase_shift / M_PI;
+        modulation_result_t result = dq_to_modulation_calculate(dq_voltage);
+        data->computed_angle[i] = result.phase_shift / M_PI;
     }
 }
 

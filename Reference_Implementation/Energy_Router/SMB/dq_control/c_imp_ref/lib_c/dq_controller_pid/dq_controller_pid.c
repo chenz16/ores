@@ -37,6 +37,8 @@ void DQController_Update(DQController_State* state, DQController_Params* params)
     state->integral_d += error_d * params->ki_d * params->Ts;
     state->integral_q += error_q * params->ki_q * params->Ts;
 
+    printf("integral_d: %f, integral_q: %f\n", state->integral_d, state->integral_q);
+
     // Apply integral limits
     if (state->integral_d > params->integral_max) {
         state->integral_d = params->integral_max;
@@ -55,13 +57,13 @@ void DQController_Update(DQController_State* state, DQController_Params* params)
     float vq_pi = params->kp_q * error_q + state->integral_q;
 
     // Enhanced feed-forward terms with R, L compensation
-    float vd_ff = state->vd_grid                    // Grid voltage
-                 - params->R * state->id_meas         // Resistive drop (grid voltage drops across R)
-                 - params->L * params->omega * state->iq_meas;  // Cross-coupling (ωL*Iq)
+    float vd_ff = state->vd_grid                   // Grid voltage
+                 - params->R * state->id_meas         // Resistive drop
+                 + params->L * params->omega * state->iq_meas;  // Cross-coupling (ωL*Iq)
                 
     float vq_ff = state->vq_grid                    // Grid voltage
-                 - params->R * state->iq_meas         // Resistive drop (grid voltage drops across R)
-                 + params->L * params->omega * state->id_meas;  // Cross-coupling (ωL*Id)
+                 - params->R * state->iq_meas         // Resistive drop
+                 - params->L * params->omega * state->id_meas;  // Cross-coupling (-ωL*Id)
 
     // Combine PI output and feed-forward terms
     state->vd_out = vd_pi + vd_ff;

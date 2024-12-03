@@ -2,7 +2,6 @@
 #define DQ_TO_MODULATION_H
 
 #include <stdbool.h>
-#include <stdint.h>
 
 #define MAX_MOD_INDEX 1.0f
 
