@@ -18,6 +18,7 @@ typedef struct {
     float Ts_control;          // Control time step
     float omega;               // Angular frequency in rad/s
     float Vg_rms;             // Grid voltage RMS
+    float I_desired_rms;      // Desired current RMS
     float R;                   // Resistance in Ohms
     float L;                   // Inductance in Henrys
     float sim_time;           // Simulation time in seconds
@@ -39,6 +40,12 @@ typedef struct {
     float* i_beta;         // Beta current
     float* i_d;           // D-axis current
     float* i_q;           // Q-axis current
+    float* i_d_desired;    // Desired d-axis current
+    float* i_q_desired;    // Desired q-axis current
+    float *i_desired;
+    float *i_alpha_desired;
+    float *i_beta_desired;
+
     float* v_grid_alpha;  // Grid voltage alpha
     float* v_grid_beta;   // Grid voltage beta
     float* v_grid_d;      // Grid voltage d-axis

@@ -27,16 +27,18 @@ modulation_result_t dq_to_modulation_calculate(dq_voltage_t dq_voltage) {
         result.index = mod_index;
     }
 
-    // Calculate phase shift using adjusted values
-    float phase_shift_relative_to_cos = atan2f(result.vq_adjust, result.vd_adjust);
-    float phase_shift_relative_to_sin = phase_shift_relative_to_cos + M_PI/2.0f;
-    result.phase_shift = phase_shift_relative_to_sin;
-    
-    // Wrap phase to [-π, π]
+    result.phase_shift = atan2f(result.vq_adjust, result.vd_adjust);
     while (result.phase_shift > M_PI) {
         result.phase_shift -= 2.0f * M_PI;
     }
     while (result.phase_shift < -M_PI) {
+        result.phase_shift += 2.0f * M_PI;
+    }
+
+    if (result.phase_shift > M_PI) {
+        result.phase_shift -= 2.0f * M_PI;
+    }
+    if (result.phase_shift < -M_PI) {
         result.phase_shift += 2.0f * M_PI;
     }
         

@@ -30,12 +30,13 @@ fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 12))
 ax1_twin = ax1.twinx()
 l1, = ax1.plot(t*1000, v_grid, 'b-', label='Grid Voltage')
 l2, = ax1_twin.plot(t*1000, i_load, 'r-', label='Load Current')
+l3, = ax1.plot(t*1000, v_inv_alpha, 'g-', label='Inverter Voltage Alpha')
 ax1.set_xlabel('Time (ms)')
 ax1.set_ylabel('Voltage (V)', color='b')
 ax1_twin.set_ylabel('Current (A)', color='r')
 ax1.tick_params(axis='y', labelcolor='b')
 ax1_twin.tick_params(axis='y', labelcolor='r')
-lines = [l1, l2]
+lines = [l1, l2, l3]
 labels = [l.get_label() for l in lines]
 ax1.legend(lines, labels, loc='upper right')
 ax1.grid(True)

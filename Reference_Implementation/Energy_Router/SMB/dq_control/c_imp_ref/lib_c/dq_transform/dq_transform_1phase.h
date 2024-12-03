@@ -14,4 +14,5 @@
  */
 void dq_transform_1phase(float alpha, float beta, float angle, float *d_out, float *q_out);
 
+void inverse_dq_transform_1phase(float d, float q, float theta, float* alpha, float* beta);
 #endif /* DQ_TRANSFORM_1PHASE_H */

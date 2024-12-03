@@ -7,18 +7,21 @@
 #include "../../dq_to_modulation/dq_to_modulation.h"
 #include "../../beta_transform/beta_transform_1p.h"
 
+#define SET_D_AXIS_AS_COS 0
+
 void init_system_params(SystemParams* params) {
     params->signal_freq = 50.0f;
     params->plant_sim_freq = 1000000.0f; //
-    params->control_update_freq = 1000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
-    params->ratio_cntlFreqReduction = 20; // control 频率是 sensing 频率的 1/20
+    params->control_update_freq = 10000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
+    params->ratio_cntlFreqReduction = 1; // control 频率是 sensing 频率的 1/20
     params->Ts_plant_sim = 1.0f / params->plant_sim_freq;
     params->Ts_control = 1.0f / params->control_update_freq;
     params->omega = 2.0f * M_PI * params->signal_freq;
     params->Vg_rms = 230.0f;
+    params->I_desired_rms = 20.0f;
     params->R = 0.1f;
     params->L = 0.005f;
-    params->sim_time = 0.2f;
+    params->sim_time = 0.4f;
     printf("Debug Ts values:\n");
     printf("Ts_plant_sim: %.6f\n", params->Ts_plant_sim);
     printf("Ts_control: %.6f\n", params->Ts_control);
@@ -39,6 +42,11 @@ SimulationData* allocate_simulation_data(int length) {
     data->v_q_desired = (float*)calloc(length, sizeof(float));
     data->v_d_actual = (float*)calloc(length, sizeof(float));
     data->v_q_actual = (float*)calloc(length, sizeof(float));
+    data->i_d_desired = (float*)calloc(length, sizeof(float));
+    data->i_q_desired = (float*)calloc(length, sizeof(float));
+    data->i_desired = (float*)calloc(length, sizeof(float));
+    data->i_alpha_desired = (float*)calloc(length, sizeof(float));
+    data->i_beta_desired = (float*)calloc(length, sizeof(float));
 
     data->i_alpha = (float*)calloc(length, sizeof(float));
     data->i_beta = (float*)calloc(length, sizeof(float));
@@ -48,7 +56,6 @@ SimulationData* allocate_simulation_data(int length) {
     data->v_grid_beta = (float*)calloc(length, sizeof(float));
     data->v_grid_d = (float*)calloc(length, sizeof(float));
     data->v_grid_q = (float*)calloc(length, sizeof(float));
-    
     // Add new allocations
     data->mod_index = (float*)calloc(length, sizeof(float));
     data->phase_shift = (float*)calloc(length, sizeof(float));
@@ -59,24 +66,17 @@ SimulationData* allocate_simulation_data(int length) {
     return data;
 }
 
-void inverse_dq_transform_1phase(float v_d, float v_q, float theta,
-                               float* v_alpha, float* v_beta) {
-    *v_alpha = v_d * cosf(theta) - v_q * sinf(theta);
-    *v_beta = v_d * sinf(theta) + v_q * cosf(theta);
-}
-
-
 void simulate_system(SystemParams* params, SimulationData* data) {
     // Initialize controller with matching gains from Python
     DQController_Params controller_params = {
-        .kp_d = 5.0f,        // Match Python kp value
-        .ki_d = 400.0f,      // Match Python ki value
-        .kp_q = 5.0f,
-        .ki_q = 400.0f,
+        .kp_d = 10.0f,        // Match Python kp value
+        .ki_d = 200.0f,      // Match Python ki value
+        .kp_q = 10.0f,
+        .ki_q = 200.0f,
         .omega = params->omega,
         .Ts = params->Ts_control,
-        .integral_max =  400.0f,   // Suggested value based on 230V RMS system
-        .integral_min =  -400.0f,
+        .integral_max =  300.0f,   // Suggested value based on 230V RMS system
+        .integral_min =  -300.0f,
         .R = params->R,      // Use system R value (0.1 ohm)
         .L = params->L       // Use system L value (0.005 H)
     };
@@ -103,16 +103,22 @@ void simulate_system(SystemParams* params, SimulationData* data) {
                          params->control_update_freq);
     DQController_Init(&controller_state, &controller_params);
 
-    // Set reference currents (matching Python)
-    float i_ref_d = 20.0f;
-    float i_ref_q = 0.0f;
-    DQController_SetReference(&controller_state, i_ref_d, i_ref_q);
+    // Modify reference currents for single-phase system
+    // For unity power factor (current in phase with voltage):
+    //这里模拟，电流电压同步，功率因素为0 的情况；电流经过dq变换后， d = 0， q = -幅值
+    // float i_ref_d = 20.0f;      // Changed from 20.0f to 0.0f
+    // float i_ref_q = -0.0f;    // Changed from 0.0f to -20.0f
+    // DQController_SetReference(&controller_state, i_ref_d, i_ref_q);
     // Grid voltage initialization
     float Vg_peak = params->Vg_rms * sqrtf(2.0f);
+    float I_desired_peak = params->I_desired_rms * sqrtf(2.0f);
     float current_t = 0.0f;
+    float power_factor_target = 1.0f;
 
     // Main simulation loop
     dq_voltage_t dq_voltage_last = {0};
+
+
 
     /***
      * Loop for sensing and filter, 1k-20kHz
@@ -120,25 +126,52 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     for (int n = 0; n < data->length - 1; n++) {
         float t = data->t[n];
         float theta = params->omega * t;
-        // Grid voltage calculations (same as current)
+        float theta_dq = 0.0f;
+        
+        if (SET_D_AXIS_AS_COS)
+        {
+            // Grid voltage in alpha-beta
+            data->v_grid[n]       = Vg_peak * cosf(theta);
+            data->v_grid_alpha[n] = data->v_grid[n];
+            data->v_grid_beta[n]  = Vg_peak * sinf(theta);  // 90-degree lag
 
-        //////电压测量 alpha beta， 然后dq变换
-        /// 实际操作这样简化： 把电压的幅值（比如308V)， 作为 d 值，q = 0；
-        data->v_grid[n]       = Vg_peak * cosf(theta);
-        data->v_grid_alpha[n] = data->v_grid[n];
-        data->v_grid_beta[n]  = Vg_peak * sinf(theta);
-        // data->v_grid_beta[n] = BetaTransform_1p_Update(&beta_transform_1p, data->v_grid_alpha[n])
-        dq_transform_1phase(data->v_grid_alpha[n], data->v_grid_beta[n], theta,
-                          &data->v_grid_d[n], &data->v_grid_q[n]);
+            data->i_desired[n]       = I_desired_peak * cosf(theta);
+            data->i_alpha_desired[n] = data->i_desired[n];
+            data->i_beta_desired[n]  = I_desired_peak * sinf(theta);
+            theta_dq = theta;
+        }
 
-       //得到 电流alpha beta， 然后dq变换
-        data->i_alpha[n] = current_t; // data->i_load[n];
-        data->i_beta[n]  = BetaTransform_1p_Update(&beta_transform_1p, data->i_alpha[n]);
-        dq_transform_1phase(data->i_alpha[n], data->i_beta[n], theta,
-                             &data->i_d[n], &data->i_q[n]);
+        else 
+        {
+                        // Grid voltage in alpha-beta
+            data->v_grid[n] = Vg_peak * sinf(theta);
+            data->v_grid_alpha[n] = data->v_grid[n];
+            data->v_grid_beta[n] = - Vg_peak * cosf(theta);  // 90-degree lag
+
+            data->i_desired[n] = I_desired_peak * sinf(theta);
+            data->i_alpha_desired[n] = data->i_desired[n];
+            data->i_beta_desired[n] = -I_desired_peak * cosf(theta);
+            theta = theta - M_PI/2.0;
+            theta_dq = theta;
+        }
+
+        data->i_alpha[n] = current_t;
+        data->i_beta[n] = BetaTransform_1p_Update(&beta_transform_1p, data->i_alpha[n]);
+        
+        // Transform to dq using adjusted angle
+        dq_transform_1phase(data->v_grid_alpha[n], data->v_grid_beta[n], theta_dq,
+                           &data->v_grid_d[n], &data->v_grid_q[n]);
+
+        dq_transform_1phase(data->i_alpha_desired[n], data->i_beta_desired[n], theta_dq,
+                           &data->i_d_desired[n], &data->i_q_desired[n]);
+  
+        dq_transform_1phase(data->i_alpha[n], data->i_beta[n], theta_dq,
+                           &data->i_d[n], &data->i_q[n]);
 
         printf("v_grid_d: %.6f\n", data->v_grid_d[n]);
         printf("v_grid_q: %.6f\n", data->v_grid_q[n]);
+        printf("i_d_desired: %.6f\n", data->i_d_desired[n]);
+        printf("i_q_desired: %.6f\n", data->i_q_desired[n]);
         printf("i_d: %.6f\n", data->i_d[n]);
         printf("i_q: %.6f\n", data->i_q[n]);
         // Controller update
@@ -148,6 +181,7 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         DQController_UpdateMeasurements(&controller_state, 
                                       data->i_d[n], data->i_q[n],
                                       data->v_grid_d[n], data->v_grid_q[n]);
+        DQController_SetReference(&controller_state, data->i_d_desired[n], data->i_q_desired[n]);
 
         DQController_Update(&controller_state, &controller_params);
 
@@ -172,7 +206,7 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         {
           inverse_dq_transform_1phase(dq_voltage.vd,
                                     dq_voltage.vq,
-                                    theta,
+                                    theta_dq,
                                     &data->v_inv_alpha[n],
                                     &data->v_inv_beta[n]);
         }
@@ -180,7 +214,7 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         {
             inverse_dq_transform_1phase(dq_voltage_last.vd,
                 dq_voltage_last.vq,
-                theta,
+                theta_dq,
                 &data->v_inv_alpha[n],
                 &data->v_inv_beta[n]);
         }
