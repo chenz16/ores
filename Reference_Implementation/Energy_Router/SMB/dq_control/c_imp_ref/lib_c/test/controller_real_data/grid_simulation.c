@@ -6,19 +6,21 @@
 #include <stdbool.h>
 #include "../../dq_to_modulation/dq_to_modulation.h"
 #include "../../beta_transform/beta_transform_1p.h"
+#include "../../log_data_rw/log_data_rw.h"
+#include "../../lowpass_filter_1storder/lowpass_filter_1storder.h"
 
 #define SET_D_AXIS_AS_COS 0
 
 void init_system_params(SystemParams* params) {
     params->signal_freq = 50.0f;
-    params->plant_sim_freq = 1000000.0f; //
-    params->control_update_freq = 10000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
+    params->plant_sim_freq = 1000.0f; //
+    params->control_update_freq = 1000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
     params->ratio_cntlFreqReduction = 1; // control 频率是 sensing 频率的 1/ratio_cntlFreqReduction
     params->Ts_plant_sim = 1.0f / params->plant_sim_freq;
     params->Ts_control = 1.0f / params->control_update_freq;
     params->omega = 2.0f * M_PI * params->signal_freq;
     params->Vg_rms = 230.0f;
-    params->I_desired_rms = 20.0f;
+    params->I_desired_rms =2.6f;
     params->R = 0.1f;
     params->L = 0.005f;
     params->sim_time = 0.4f;
@@ -67,6 +69,13 @@ SimulationData* allocate_simulation_data(int length) {
 }
 
 void simulate_system(SystemParams* params, SimulationData* data) {
+    // Change read_log_data to load_log_data
+    LogData* log_data = load_log_data("../dq_decomp_real_data/log_data.csv");
+    if (!log_data) {
+        printf("Failed to read log data\n");
+        return;
+    }
+
     // Initialize controller with matching gains from Python
     DQController_Params controller_params = {
         .kp_d = 10.0f,        // Match Python kp value
@@ -75,8 +84,8 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         .ki_q = 200.0f,
         .omega = params->omega,
         .Ts = params->Ts_control,
-        .integral_max =  300.0f,   // Suggested value based on 230V RMS system
-        .integral_min =  -300.0f,
+        .integral_max =  10.0f,   // Suggested value based on 230V RMS system
+        .integral_min =  -10.0f,
         .R = params->R,      // Use system R value (0.1 ohm)
         .L = params->L       // Use system L value (0.005 H)
     };
@@ -113,19 +122,27 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     float Vg_peak = params->Vg_rms * sqrtf(2.0f);
     float I_desired_peak = params->I_desired_rms * sqrtf(2.0f);
     float current_t = 0.0f;
-    float power_factor_target = 1.0;
+
+    // Initialize low pass filters for Id and Iq
+    LowPassFilter1st lpf_id = {0};
+    LowPassFilter1st lpf_iq = {0};
+    
+    // Configure filters with appropriate cutoff frequency (e.g., 50 Hz)
+    float cutoff_freq = 10.0f;  // Adjust this value as needed
+    lpf_init(&lpf_id, params->control_update_freq, cutoff_freq);
+    lpf_init(&lpf_iq, params->control_update_freq, cutoff_freq);
 
     // Main simulation loop
     dq_voltage_t dq_voltage_last = {0};
-
-
+    int log_data_index = 0;  // Track position in log data
 
     /***
      * Loop for sensing and filter, 1k-20kHz
      ***/
     for (int n = 0; n < data->length - 1; n++) {
         float t = data->t[n];
-        float theta = params->omega * t;
+        // float theta = params->omega? * t;
+        float theta = log_data->current_angle[n];
         float theta_dq = 0.0f;
         
         if (SET_D_AXIS_AS_COS)
@@ -155,9 +172,16 @@ void simulate_system(SystemParams* params, SimulationData* data) {
             theta_dq = theta;
         }
 
-        data->i_alpha[n] = current_t;
-        data->i_beta[n] = BetaTransform_1p_Update(&beta_transform_1p, data->i_alpha[n]);
-        
+        // Replace simulated current with real current from log data
+        if (log_data_index < log_data->length) {
+            data->i_alpha[n] = log_data->current_value[log_data_index];
+            data->i_beta[n] = BetaTransform_1p_Update(&beta_transform_1p, data->i_alpha[n]);
+            log_data_index++;
+        } else {
+            printf("Warning: Ran out of log data at index %d\n", n);
+            break;
+        }
+
         // Transform to dq using adjusted angle
         dq_transform_1phase(data->v_grid_alpha[n], data->v_grid_beta[n], theta_dq,
                            &data->v_grid_d[n], &data->v_grid_q[n]);
@@ -167,6 +191,10 @@ void simulate_system(SystemParams* params, SimulationData* data) {
   
         dq_transform_1phase(data->i_alpha[n], data->i_beta[n], theta_dq,
                            &data->i_d[n], &data->i_q[n]);
+
+        // Apply low pass filtering
+        data->i_d[n] = lpf_process(&lpf_id, data->i_d[n]);
+        data->i_q[n] = lpf_process(&lpf_iq, data->i_q[n]);
 
         printf("v_grid_d: %.6f\n", data->v_grid_d[n]);
         printf("v_grid_q: %.6f\n", data->v_grid_q[n]);
@@ -238,8 +266,14 @@ void simulate_system(SystemParams* params, SimulationData* data) {
 
         data->i_load[n] = current_t;
         data->t[n + 1] = data->t[n] + params->Ts_control;
+        data->i_load[n] =  data->i_alpha[n];
         ///////////////////// 模拟结束/////////////////////////////////////
     }
+
+    // Use standard free instead of custom free function
+    free(log_data->current_value);  // Free the array first
+    free(log_data->time_s);         // Free the time array
+    free(log_data);                 // Then free the structure itself
 }
 
 void free_simulation_data(SimulationData* data) {

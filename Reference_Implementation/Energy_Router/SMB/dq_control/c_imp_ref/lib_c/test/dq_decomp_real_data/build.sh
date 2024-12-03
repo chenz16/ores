@@ -18,10 +18,11 @@ mkdir -p obj
 gcc -c dq_to_modulation.c -I. -o obj/dq_to_modulation.o
 gcc -c ../../beta_transform/beta_transform_1p.c -I../../ -o obj/beta_transform_1p.o
 gcc -c ../../dq_transform/dq_transform_1phase.c -I../../ -o obj/dq_transform_1phase.o
+gcc -c ../../log_data_rw/log_data_rw.c -I../../ -o obj/log_data_rw.o
 gcc -c main.c -I. -I../../ -o obj/main.o
 
 # Link all object files
-gcc obj/beta_transform_1p.o obj/dq_transform_1phase.o obj/dq_to_modulation.o obj/main.o -o dq_decomp_real_data -lm
+gcc obj/beta_transform_1p.o obj/dq_transform_1phase.o obj/dq_to_modulation.o obj/log_data_rw.o obj/main.o -o dq_decomp_real_data -lm
 
 if [ $? -eq 0 ]; then
     echo "Build successful!"
