@@ -22,6 +22,7 @@ i_d = data['i_d'].values
 i_q = data['i_q'].values
 mod_index = data['mod_index'].values
 phase_shift = data['phase_shift'].values
+current_phase_shift = data['current_phase_shift'].values
 
 # Create figure with multiple subplots (adding 2 new ones)
 fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 12))
@@ -59,9 +60,11 @@ ax3.set_title('D-Q Frame Currents')
 ax3.grid(True)
 ax3.legend()
 
-# Plot 4: Modulation (existing)
-ax4.plot(t*1000, mod_index, label='Modulation Index')
-ax4.plot(t*1000, phase_shift, label='Phase Shift')
+# Plot 4: Modulation and Phase Shifts
+ax4.plot(t*1000, mod_index, label='Modulation Magnitude Index')
+ax4.plot(t*1000, phase_shift, label='Modulation Voltage Phase Shift')
+ax4.plot(t*1000, current_phase_shift, label='Current Phase Shift')
+ax4.set_title('The true feedback current may look differently. Currently d, q volages wind up')
 ax4.set_xlabel('Time (ms)')
 ax4.set_ylabel('Value')
 ax4.legend()

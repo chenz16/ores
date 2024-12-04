@@ -1,4 +1,0 @@
-define a h file to hav the following function 
-1. convret the power factor to current reference in dq frame
-2. you need to consider charging and discharging mode
-in charging mode, the grid flow current is positive, while in discharging mode, the grid flow current is negative

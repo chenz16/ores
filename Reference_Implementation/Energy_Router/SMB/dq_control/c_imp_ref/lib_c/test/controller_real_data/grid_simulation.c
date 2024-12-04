@@ -8,6 +8,7 @@
 #include "../../beta_transform/beta_transform_1p.h"
 #include "../../log_data_rw/log_data_rw.h"
 #include "../../lowpass_filter_1storder/lowpass_filter_1storder.h"
+#include "../../misc/power_2dq_ref/power_2dq_ref.h"
 
 #define SET_D_AXIS_AS_COS 0
 
@@ -28,6 +29,9 @@ void init_system_params(SystemParams* params) {
     printf("Ts_plant_sim: %.6f\n", params->Ts_plant_sim);
     printf("Ts_control: %.6f\n", params->Ts_control);
     printf("omega: %.6f\n", params->omega);
+    params->apparent_power = params->Vg_rms * params->I_desired_rms;  // S = V * I
+    params->power_factor = -1.0f;  // Unity power factor by default
+    params->reactive_power_is_leading = false;  // Default to lagging power factor
 }
 
 SimulationData* allocate_simulation_data(int length) {
@@ -63,6 +67,7 @@ SimulationData* allocate_simulation_data(int length) {
     data->phase_shift = (float*)calloc(length, sizeof(float));
     data->mod_valid = (int*)calloc(length, sizeof(int));
     data->vdc = 400.0f;
+    data->current_phase_shift = (float*)calloc(length, sizeof(float));
 
     
     return data;
@@ -141,36 +146,53 @@ void simulate_system(SystemParams* params, SimulationData* data) {
      ***/
     for (int n = 0; n < data->length - 1; n++) {
         float t = data->t[n];
-        // float theta = params->omega? * t;
+        // float theta = params->omega * t;
         float theta = log_data->current_angle[n];
         float theta_dq = 0.0f;
         
-        if (SET_D_AXIS_AS_COS)
-        {
+        if (SET_D_AXIS_AS_COS) {
             // Grid voltage in alpha-beta
-            data->v_grid[n]       = Vg_peak * cosf(theta);
+            data->v_grid[n] = Vg_peak * cosf(theta);
             data->v_grid_alpha[n] = data->v_grid[n];
-            data->v_grid_beta[n]  = Vg_peak * sinf(theta);  // 90-degree lag
-
-            data->i_desired[n]       = I_desired_peak * cosf(theta);
-            data->i_alpha_desired[n] = data->i_desired[n];
-            data->i_beta_desired[n]  = I_desired_peak * sinf(theta);
+            data->v_grid_beta[n] = Vg_peak * sinf(theta);
             theta_dq = theta;
-        }
-
-        else 
-        {
-                        // Grid voltage in alpha-beta
+        } else {
+            // Grid voltage in alpha-beta
             data->v_grid[n] = Vg_peak * sinf(theta);
             data->v_grid_alpha[n] = data->v_grid[n];
-            data->v_grid_beta[n] = - Vg_peak * cosf(theta);  // 90-degree lag
-
-            data->i_desired[n] = I_desired_peak * sinf(theta);
-            data->i_alpha_desired[n] = data->i_desired[n];
-            data->i_beta_desired[n] = -I_desired_peak * cosf(theta);
+            data->v_grid_beta[n] = -Vg_peak * cosf(theta);
             theta = theta - M_PI/2.0;
             theta_dq = theta;
         }
+
+        // Transform grid voltage to dq
+        dq_transform_1phase(data->v_grid_alpha[n], data->v_grid_beta[n], theta_dq,
+                           &data->v_grid_d[n], &data->v_grid_q[n]);
+
+        // Calculate current references using power-based approach
+        float id_ref, iq_ref;
+        power_to_dq_current_ref(
+            params->apparent_power,
+            params->power_factor,
+            data->v_grid_d[n],
+            data->v_grid_q[n],
+            &id_ref,
+            &iq_ref,
+            params->reactive_power_is_leading
+        );
+
+        // Store the dq current references
+        data->i_d_desired[n] = id_ref;
+        data->i_q_desired[n] = iq_ref;
+
+        // Transform back to alpha-beta for visualization/logging
+        inverse_dq_transform_1phase(
+            id_ref,
+            iq_ref,
+            theta_dq,
+            &data->i_alpha_desired[n],
+            &data->i_beta_desired[n]
+        );
 
         // Replace simulated current with real current from log data
         if (log_data_index < log_data->length) {
@@ -183,11 +205,11 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         }
 
         // Transform to dq using adjusted angle
-        dq_transform_1phase(data->v_grid_alpha[n], data->v_grid_beta[n], theta_dq,
-                           &data->v_grid_d[n], &data->v_grid_q[n]);
+        // dq_transform_1phase(data->v_grid_alpha[n], data->v_grid_beta[n], theta_dq,
+        //                    &data->v_grid_d[n], &data->v_grid_q[n]);
 
-        dq_transform_1phase(data->i_alpha_desired[n], data->i_beta_desired[n], theta_dq,
-                           &data->i_d_desired[n], &data->i_q_desired[n]);
+        // dq_transform_1phase(data->i_alpha_desired[n], data->i_beta_desired[n], theta_dq,
+        //                    &data->i_d_desired[n], &data->i_q_desired[n]);
   
         dq_transform_1phase(data->i_alpha[n], data->i_beta[n], theta_dq,
                            &data->i_d[n], &data->i_q[n]);
@@ -195,6 +217,7 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         // Apply low pass filtering
         data->i_d[n] = lpf_process(&lpf_id, data->i_d[n]);
         data->i_q[n] = lpf_process(&lpf_iq, data->i_q[n]);
+        data->current_phase_shift[n] = atan2f(data->i_q[n], data->i_d[n]);
 
         printf("v_grid_d: %.6f\n", data->v_grid_d[n]);
         printf("v_grid_q: %.6f\n", data->v_grid_q[n]);
@@ -202,6 +225,10 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         printf("i_q_desired: %.6f\n", data->i_q_desired[n]);
         printf("i_d: %.6f\n", data->i_d[n]);
         printf("i_q: %.6f\n", data->i_q[n]);
+        printf("current_phase_shift: %.6f\n", data->current_phase_shift[n]);
+        printf("Goal d current is: %.6f,  + means discharging, - means charging\n", data->i_d_desired[n]);
+        printf("Actual d current is: %.6f,  + means discharging, - means charging\n", data->i_d[n]);
+
         // Controller update
 
         ///控制器的跟新：输入为 电流dq， 输出为电压dq
@@ -260,11 +287,12 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         plant_params.Vg_phase = theta;
         plant_params.control_update_freq = params->control_update_freq;
         plant_params.plant_sim_freq = params->plant_sim_freq;
-        current_t = PlantSimulator_Update(&plant_state, &plant_params,
-                                                   data->v_inv_alpha[n],
-                                                   data->v_grid_alpha[n]);
+        // current_t = PlantSimulator_Update(&plant_state, &plant_params,
+        //                                            data->v_inv_alpha[n],
+        //                                            data->v_grid_alpha[n]);
 
-        data->i_load[n] = current_t;
+        // data->i_load[n] = current_t;
+
         data->t[n + 1] = data->t[n] + params->Ts_control;
         data->i_load[n] =  data->i_alpha[n];
         ///////////////////// 模拟结束/////////////////////////////////////
@@ -307,11 +335,11 @@ void save_results_to_file(const char* filename, SimulationData* data) {
 
     // Write header
     fprintf(fp, "t,v_grid,i_load,v_d_desired,v_q_desired,v_inv_alpha,v_inv_beta,"
-            "i_alpha,i_beta,i_d,i_q,mod_index,phase_shift,mod_valid\n");
+            "i_alpha,i_beta,i_d,i_q,mod_index,phase_shift,mod_valid,current_phase_shift\n");
 
     // Write data with all values including modulation data
     for (int n = 0; n < data->length; n++) {
-        fprintf(fp, "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d\n",
+        fprintf(fp, "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%d,%.6f\n",
                 (double)data->t[n],
                 (double)data->v_grid[n],
                 (double)data->i_load[n],
@@ -325,7 +353,8 @@ void save_results_to_file(const char* filename, SimulationData* data) {
                 (double)data->i_q[n],
                 (double)data->mod_index[n],
                 (double)data->phase_shift[n],
-                (int)data->mod_valid[n]);
+                (int)data->mod_valid[n],
+                (double)data->current_phase_shift[n]);
     }
 
     fclose(fp);
