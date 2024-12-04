@@ -10,6 +10,7 @@
 #include "dq_controller_pid/dq_controller_pid.h"
 #include "./plant_simulator.h"
 #include "../../log_data_rw/log_data_rw.h"
+#include "../../misc/power_2dq_ref/power_2dq_ref.h"
 
 typedef struct {
     float signal_freq;          // Signal frequency in Hz
@@ -24,6 +25,9 @@ typedef struct {
     float L;                   // Inductance in Henrys
     float sim_time;           // Simulation time in seconds
     int ratio_cntlFreqReduction; // Ratio of control update frequency to sensing simulation frequency
+    float apparent_power;     // Apparent power in VA
+    float power_factor;       // Power factor (-1 to 1)
+    bool reactive_power_is_leading;  // true if reactive power is leading
 } SystemParams;
 
 typedef struct {
@@ -55,6 +59,7 @@ typedef struct {
     float* phase_shift;
     int* mod_valid;
     float vdc;  // DC bus voltage
+    float *current_phase_shift;
 } SimulationData;
 
 // Function declarations
