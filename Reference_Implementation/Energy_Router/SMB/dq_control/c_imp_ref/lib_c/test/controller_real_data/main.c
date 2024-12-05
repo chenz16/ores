@@ -6,16 +6,16 @@ int main() {
     init_system_params(&params);
     
     int n_control_steps = (int)(params.sim_time / params.Ts_control);
-    SimulationData* sim_data = allocate_simulation_data(n_control_steps);
+    SysRunStates* states = allocate_sys_run_states(n_control_steps);
     
     // Run simulation
-    simulate_system(&params, sim_data);
+    simulate_system(&params, states);
     
     // Save results
-    save_results_to_file("simulation_results.csv", sim_data);
+    save_results_to_file("simulation_results.csv", states);
     
     // Cleanup
-    free_simulation_data(sim_data);
+    free_sys_run_states(states);
     
     return 0;
 }
