@@ -2,36 +2,36 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
+# Clear everything
+plt.close('all')
+plt.clf()
+
 # Load data
-try:
-    data = pd.read_csv('simulation_results.csv')
-except FileNotFoundError:
-    print("Error: Could not find simulation_results.csv in current directory")
-    exit(1)
+data = pd.read_csv('simulation_results.csv')
 
-t = data['t'].values
-v_grid = data['v_grid'].values
-i_load = data['i_load'].values
-v_d_desired = data['v_d_desired'].values
-v_q_desired = data['v_q_desired'].values
-v_inv_alpha = data['v_inv_alpha'].values
-v_inv_beta = data['v_inv_beta'].values
-i_alpha = data['i_alpha'].values
-i_beta = data['i_beta'].values
-i_d = data['i_d'].values
-i_q = data['i_q'].values
-mod_index = data['mod_index'].values
-phase_shift = data['phase_shift'].values
-current_phase_shift = data['current_phase_shift'].values
+# Print debug info for v_inv_alpha
+print("v_inv_alpha statistics:")
+print(f"Mean: {data['v_inv_alpha'].mean():.2f}")
+print(f"Min: {data['v_inv_alpha'].min():.2f}")
+print(f"Max: {data['v_inv_alpha'].max():.2f}")
+print("\nFirst few v_inv_alpha values:")
+print(data['v_inv_alpha'].head())
+print("\nColumns in data:")
+print(data.columns.tolist())
 
-# Create figure with multiple subplots (adding 2 new ones)
+# Skip initial transient (first 10%) and end (last 10%) of the data
+start_idx = int(len(data) * 0.1)
+end_idx = int(len(data) * 0.9)
+steady_state_data = data.iloc[start_idx:end_idx]
+
+# Create figure with subplots (only one figure now)
 fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(12, 12))
 
-# Plot 1: Grid Voltage and Load Current overlaid (existing)
+# Plot 1: Grid Voltage and Load Current overlaid with two y-axes
 ax1_twin = ax1.twinx()
-l1, = ax1.plot(t*1000, v_grid, 'b-', label='Grid Voltage')
-l2, = ax1_twin.plot(t*1000, i_load, 'r-', label='Load Current')
-l3, = ax1.plot(t*1000, v_inv_alpha, 'g-', label='Inverter Voltage Alpha')
+l1, = ax1.plot(steady_state_data['t']*1000, steady_state_data['v_grid'], 'b-', label='Grid Voltage')
+l2, = ax1_twin.plot(steady_state_data['t']*1000, steady_state_data['i_load'], 'r-', label='Load Current')
+l3, = ax1.plot(steady_state_data['t']*1000, steady_state_data['v_inv_alpha'], 'g-', label='Inverter Voltage Alpha')
 ax1.set_xlabel('Time (ms)')
 ax1.set_ylabel('Voltage (V)', color='b')
 ax1_twin.set_ylabel('Current (A)', color='r')
@@ -42,18 +42,18 @@ labels = [l.get_label() for l in lines]
 ax1.legend(lines, labels, loc='upper right')
 ax1.grid(True)
 
-# Plot 2: Alpha-Beta Currents (new)
-ax2.plot(t*1000, i_alpha, label='I_alpha')
-ax2.plot(t*1000, i_beta, label='I_beta')
+# Plot 2: Alpha-Beta Currents
+ax2.plot(steady_state_data['t']*1000, steady_state_data['i_alpha'], 'b-', label='I_alpha')
+ax2.plot(steady_state_data['t']*1000, steady_state_data['i_beta'], 'r-', label='I_beta')
 ax2.set_xlabel('Time (ms)')
 ax2.set_ylabel('Current (A)')
 ax2.set_title('Alpha-Beta Frame Currents')
 ax2.grid(True)
 ax2.legend()
 
-# Plot 3: D-Q Currents (new)
-ax3.plot(t*1000, i_d, label='I_d')
-ax3.plot(t*1000, i_q, label='I_q')
+# Plot 3: D-Q Currents
+ax3.plot(steady_state_data['t']*1000, steady_state_data['i_d'], 'b-', label='I_d')
+ax3.plot(steady_state_data['t']*1000, steady_state_data['i_q'], 'r-', label='I_q')
 ax3.set_xlabel('Time (ms)')
 ax3.set_ylabel('Current (A)')
 ax3.set_title('D-Q Frame Currents')
@@ -61,10 +61,9 @@ ax3.grid(True)
 ax3.legend()
 
 # Plot 4: Modulation and Phase Shifts
-ax4.plot(t*1000, mod_index, label='Modulation Magnitude Index')
-ax4.plot(t*1000, phase_shift, label='Modulation Voltage Phase Shift')
-ax4.plot(t*1000, current_phase_shift, label='Current Phase Shift')
-ax4.set_title('The true feedback current may look differently. Currently d, q volages wind up')
+ax4.plot(steady_state_data['t']*1000, steady_state_data['mod_index'], 'b-', label='Modulation Index')
+ax4.plot(steady_state_data['t']*1000, steady_state_data['phase_shift'], 'r-', label='Voltage Phase Shift')
+ax4.plot(steady_state_data['t']*1000, steady_state_data['current_phase_shift'], 'g-', label='Current Phase Shift')
 ax4.set_xlabel('Time (ms)')
 ax4.set_ylabel('Value')
 ax4.legend()
