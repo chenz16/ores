@@ -18,6 +18,6 @@
 void power_to_dq_current_ref(float apparent_power, float power_factor,
                             float vd, float vq,
                             float* id_ref, float* iq_ref, 
-                            bool is_forward);
+                            bool reactive_power_is_leading);
 
 #endif /* POWER_2DQ_REF_H */
