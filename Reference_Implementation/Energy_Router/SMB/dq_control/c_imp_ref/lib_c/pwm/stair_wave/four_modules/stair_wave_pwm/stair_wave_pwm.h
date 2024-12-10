@@ -22,6 +22,7 @@ typedef struct {
     bool vdc_sort_mode;
     bool update_1d_table;
     float phase_shift;
+    SwitchingStateResult * pwm_out_state;
 } PWMControlState;
 
 

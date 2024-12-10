@@ -63,16 +63,26 @@ void print_dc_switching_states(float angle, int state) {
 }
 
 void print_multiple_switching_states(const StairWaveTable* table, int num_samples) {
+    if (!table) {
+        fprintf(stderr, "Null table pointer in print_multiple_switching_states\n");
+        return;
+    }
+
     float* test_angles = (float*)malloc(num_samples * sizeof(float));
+    if (!test_angles) {
+        fprintf(stderr, "Failed to allocate test angles\n");
+        return;
+    }
+
     float margin = 0.0001f;
-    SwitchingStateResult* results = (SwitchingStateResult*)malloc(num_samples * sizeof(SwitchingStateResult));
+    SwitchingStateResult last_result = {0, 0};
     
-    // Generate random angles
+    // Generate and sort angles
     for (int i = 0; i < num_samples; i++) {
         test_angles[i] = ((float)rand() / RAND_MAX) * 2.0f * M_PI;
     }
     
-    // Simple bubble sort for angles
+    // Sort angles (keep existing sort code)
     for (int i = 0; i < num_samples - 1; i++) {
         for (int j = 0; j < num_samples - i - 1; j++) {
             if (test_angles[j] > test_angles[j + 1]) {
@@ -83,32 +93,27 @@ void print_multiple_switching_states(const StairWaveTable* table, int num_sample
         }
     }
 
-    // Get all results first
-    for (int i = 0; i < num_samples; i++) {
-        results[i] = get_switching_state(table, test_angles[i], margin, false);
-    }
-
-    // Then print the complete table
     printf("\nSwitching States at Random Angles (sorted):\n");
     printf("Angle (rad) | Angle (deg) | State | DC1 | DC2 | DC3 | DC4\n");
     printf("--------------------------------------------------------\n");
     
     for (int i = 0; i < num_samples; i++) {
+        get_switching_state(table, test_angles[i], margin, i == 0, &last_result);
+        
         int dc_states[4];
         for (int j = 0; j < 4; j++) {
-            dc_states[j] = (results[i].state >= j + 1) ? 1 : 
-                          (results[i].state <= -(j + 1)) ? -1 : 0;
+            dc_states[j] = (last_result.state >= j + 1) ? 1 : 
+                          (last_result.state <= -(j + 1)) ? -1 : 0;
         }
         
         printf("%10.4f | %10.2f | %5d | %3d | %3d | %3d | %3d\n",
                test_angles[i],
                test_angles[i] * 180.0f / M_PI,
-               results[i].state,
+               last_result.state,
                dc_states[0], dc_states[1], dc_states[2], dc_states[3]);
     }
     printf("--------------------------------------------------------\n");
     
-    free(results);
     free(test_angles);
 }
 
