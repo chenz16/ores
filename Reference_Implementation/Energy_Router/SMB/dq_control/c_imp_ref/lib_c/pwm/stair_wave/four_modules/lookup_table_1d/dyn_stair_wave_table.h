@@ -15,10 +15,11 @@ void update_stair_wave_table(StairWaveTable* table,
 void free_stair_wave_table(StairWaveTable* table);
 
 // Get switching state and index for any angle using binary search
-SwitchingStateResult get_switching_state(const StairWaveTable* table, 
-                                        float angle, 
-                                        float angle_safe_margin, 
-                                        bool force_reset);
+void get_switching_state(const StairWaveTable* table, 
+                        float angle, 
+                        float angle_safe_margin, 
+                        bool force_reset, 
+                        SwitchingStateResult* last_result);
 
 // Initialize a new stair wave table with memory allocation
 StairWaveTable* init_stair_wave_table(const int num_modules);

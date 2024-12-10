@@ -41,6 +41,16 @@ bool init_pwm_control(PWMControlState* state) {
         state->dc_sources[i].valid = true;
     }
 
+    // Initialize pwm_out_state
+    state->pwm_out_state = (SwitchingStateResult*)malloc(sizeof(SwitchingStateResult));
+    if (!state->pwm_out_state) {
+        fprintf(stderr, "Failed to allocate pwm_out_state\n");
+        cleanup_pwm_control(state);
+        return false;
+    }
+    state->pwm_out_state->index = 0;
+    state->pwm_out_state->state = 0;
+
     // Initialize angles table
     state->angles_table = load_switching_angles_table_5d();
     if (!state->angles_table) {
@@ -83,6 +93,12 @@ void cleanup_pwm_control(PWMControlState* state) {
         state->dc_sources = NULL;
     }
 
+    // Add cleanup for pwm_out_state
+    if (state->pwm_out_state) {
+        free(state->pwm_out_state);
+        state->pwm_out_state = NULL;
+    }
+
     state->is_initialized = false;
 }
 
@@ -91,8 +107,6 @@ bool update_pwm_control(PWMControlState* state, single_dc_source_t* current_dc_s
         !state->table || !state->angles_table) {
         return false;
     }
-    
-
 
     update_dc_sources(
         state->dc_sources,
@@ -111,16 +125,15 @@ bool update_pwm_control(PWMControlState* state, single_dc_source_t* current_dc_s
     }
 
 
-    SwitchingStateResult result = get_switching_state(state->table, 
-                                                    state->current_angle + state->phase_shift, 
-                                                    STAIR_WAVE_ANGLE_SAFE_MARGIN, 
-                                                    state->update_table);
+    get_switching_state(state->table, 
+                        state->current_angle + state->phase_shift, 
+                        STAIR_WAVE_ANGLE_SAFE_MARGIN, 
+                        state->update_table, 
+                        state->pwm_out_state);
 
-    printf("Switching state result: %d\n", result.state);
 
-    for (int i = 0; i < state->num_modules; i++) {
-        state->dc_sources[i].pwm_state = result.state;
-    }
+    for (int i = 0; i < state->num_modules; i++) 
+        state->dc_sources[i].pwm_state = state->pwm_out_state->state;
     
     write_ios_from_dc_sources(state->dc_sources, state->num_modules);
     

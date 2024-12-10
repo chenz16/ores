@@ -99,10 +99,10 @@ void update_stair_wave_table(StairWaveTable* table,
     //     dc_sources[i].c = dc_sources[i].vdc / base_voltage;
     // }
 
-    printf("xxxx dc_sources[0].vdc: %f\n", dc_sources[0].vdc );
-    printf("xxxx dc_sources[1].vdc: %f\n", dc_sources[1].vdc);
-    printf("xxxx dc_sources[2].vdc: %f\n", dc_sources[2].vdc);
-    printf("xxxx dc_sources[3].vdc: %f\n", dc_sources[3].vdc);
+    // printf("xxxx dc_sources[0].vdc: %f\n", dc_sources[0].vdc );
+    // printf("xxxx dc_sources[1].vdc: %f\n", dc_sources[1].vdc);
+    // printf("xxxx dc_sources[2].vdc: %f\n", dc_sources[2].vdc);
+    // printf("xxxx dc_sources[3].vdc: %f\n", dc_sources[3].vdc);
 
     SwitchingAnglesResult result;
     interpolate_switching_angles_5d_with_correction(angles_table, dc_sources, &result);
@@ -148,99 +148,61 @@ void free_stair_wave_table(StairWaveTable* table) {
         free(table);
     }
 }
-
-SwitchingStateResult get_switching_state(
+void get_switching_state(
     const StairWaveTable* table,
     float angle,
     float margin,
-    bool update_table
+    bool update_table, 
+    SwitchingStateResult* result
 ) {
-    SwitchingStateResult result = {0, 0};
     
-    // Validate input parameters
-    if (!table) {
-        fprintf(stderr, "Null table pointer in get_switching_state\n");
-        return result;
-    }
-    
-    if (!table->angles || !table->sum_index || !table->sum_value) {
-        fprintf(stderr, "Invalid table arrays in get_switching_state\n");
-        return result;
+    // Normalize angle with margin to [0, 2π]
+    float angle_w_margin = fmod(angle + margin, 2.0f * M_PI);
+
+    // Set search boundaries based on update_table flag
+    int left, right;
+    if (update_table || !result) {
+        left = 0;
+        right = table->num_points - 1;
+    } else {
+        // Find appropriate search window
+        left = result->index;
+        right = left + 2;
+        // Ensure bounds are valid
+        if (right >= table->num_points) {
+            left = 0;
+            right = table->num_points - 1;
+        }
+
+        if (table->angles[right] < angle_w_margin) {
+            left = 0; 
+            right = table->num_points - 1;
+        }
     }
 
-    if (!isfinite(angle) || !isfinite(margin)) {
-        fprintf(stderr, "Invalid angle or margin in get_switching_state\n");
-        return result;
-    }
+    while (left <= right) {
+        // Check if angle_w_margin is within current bounds
+        if (table->angles[left] <= angle_w_margin && table->angles[right] > angle_w_margin && right - left <= 1)
+            break;
 
-    // printf("Debug: get_switching_state - angle=%.3f, margin=%.3f, update=%d\n", 
-    //        angle, margin, update_table);
-
-    // Binary search for faster lookup
-    if (!update_table) {
-        int left = 0;
-        int right = table->num_points - 1;
+        int mid = (left + right) / 2;
         
-        while (left <= right) {
-            int mid = (left + right) / 2;
-            
-            if (!isfinite(table->angles[mid])) {
-                fprintf(stderr, "Invalid angle at index %d in binary search\n", mid);
-                return result;
-            }
-            
-            if (fabs(angle - table->angles[mid]) <= margin) {
-                // printf("Debug: Found matching angle at index %d\n", mid);
-                if (mid >= 0 && mid < table->num_points) {
-                    result.state = table->sum_index[mid];  // Use sum_index instead of sum_value
-                    result.index = mid;
-                    // printf("Debug: Found state %d at index %d (binary)\n", result.state, result.index);
-                    return result;
-                } else {
-                    fprintf(stderr, "Index out of bounds: %d\n", mid);
-                    return result;
-                }
-            }
-            
-            if (angle < table->angles[mid])
-                right = mid - 1;
-            else
-                left = mid + 1;
-        }
-        
-        // If no exact match found, use the closest lower angle
-        if (left > 0 && left - 1 < table->num_points) {
-            // printf("Debug: Using closest lower angle at index %d\n", left - 1);
-            result.state = table->sum_index[left - 1];  // Use sum_index instead of sum_value
-            result.index = left - 1;
-        }
-    }
-    // Linear search with early exit
-    else {
-        for (int i = 0; i < table->num_points; i++) {
-            if (!isfinite(table->angles[i])) {
-                fprintf(stderr, "Invalid angle at index %d\n", i);
-                return result;
-            }
-            if (angle < table->angles[i] + margin) {
-                if (i >= 0 && i < table->num_points) {
-                    result.state = table->sum_index[i];  // Use sum_index instead of sum_value
-                    result.index = i;
-                    // printf("Debug: Found state %d at index %d\n", result.state, result.index);
-                    return result;
-                } else {
-                    fprintf(stderr, "Index out of bounds: %d\n", i);
-                    return result;
-                }
-            }
-        }
-        // If we get here, use the last state
-        if (table->num_points >= 2) {
-            result.state = table->sum_index[table->num_points - 2];  // Use sum_index instead of sum_value
-            result.index = table->num_points - 2;
-        }
-    }
+        if (mid == left) break;  // Prevent infinite loop
     
-    // printf("Debug: Returning state %d at index %d\n", result.state, result.index);
-    return result;
+        if (angle_w_margin >= table->angles[mid]) {
+            left = mid;
+        } else {
+            right = mid - 1;
+        }
+    }
+
+    result->index = left;
+    result->state = table->sum_index[left];
+    result->phase_2next = table->angles[right] - angle_w_margin;
+
+    // if (right == table->num_points - 1) {
+    //     result->phase_2next +=  table->angles[1];
+    // }
+
+    return;
 }

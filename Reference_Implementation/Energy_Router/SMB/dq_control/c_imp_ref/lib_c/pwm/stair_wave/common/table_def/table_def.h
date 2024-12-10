@@ -31,8 +31,9 @@ typedef enum {
 } HBridgeState;
 // Given the angle, return the state and index
 typedef struct {
-    int state;
-    int index;
+    int state; // 1d table sum_value
+    int index; // 1d table index
+    float phase_2next; // used for timer remaining time for next int
 } SwitchingStateResult;
 typedef SwitchingStateResult PWMOutState;
 
