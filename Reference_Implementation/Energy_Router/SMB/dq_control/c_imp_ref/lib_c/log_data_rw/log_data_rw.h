@@ -5,22 +5,27 @@
 #include <stdlib.h>
 #include <math.h>
 
-
-typedef struct {
-    float* time_s;
-    float* current_value;  // alpha signal
-    float* current_angle;  // NEW: angle from log file
-    float* beta;          // filtered result
-    float* d;            // d component
-    float* q;            // q component
-    float* filtered_d;   // filtered d component
-    float* filtered_q;   // filtered q component
-    float* computed_angle;  // NEW: only addition to struct
+// Define the structure
+struct LogData {
     int length;
-} LogData;
+    float *time_stamp;
+    float *time_us;
+    float *curr_val;
+    float *curr_angle;
+    float *beta;
+    float *d;
+    float *q;
+    float *filtered_d;
+    float *filtered_q;
+    float *mod_index;
+    float *phase_shift;
+    float *computed_angle;
+    float *notch_d;
+    float *notch_q;
+};
 
-
-int count_lines(const char* filename);
-LogData* load_log_data(const char* filename);
+// Function prototypes
+struct LogData* load_log_data(const char* filename);
+void cleanup_data(struct LogData* data);
 
 #endif /* LOG_DATA_RW_H */

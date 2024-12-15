@@ -1,38 +1,51 @@
 #!/bin/bash
 
-echo "Current directory: $(pwd)"
-echo "Building program..."
+# Get the current directory
+CURRENT_DIR=$(pwd)
+echo "Current directory: $CURRENT_DIR"
 
-# Clean up previous build
-rm -rf obj
-rm -f dq_decomp_real_data
-rm -f dq_to_modulation.*
-
-# Copy required files locally
-cp ../../dq_to_modulation/dq_to_modulation.* .
-
-# Create object files directory
+# Create obj directory if it doesn't exist
 mkdir -p obj
 
-# Compile each file
-gcc -c dq_to_modulation.c -I. -o obj/dq_to_modulation.o
-gcc -c ../../beta_transform/beta_transform_1p.c -I../../ -o obj/beta_transform_1p.o
-gcc -c ../../dq_transform/dq_transform_1phase.c -I../../ -o obj/dq_transform_1phase.o
-gcc -c ../../log_data_rw/log_data_rw.c -I../../ -o obj/log_data_rw.o
-gcc -c main.c -I. -I../../ -o obj/main.o
+echo "Building program..."
 
-# Link all object files
-gcc obj/beta_transform_1p.o obj/dq_transform_1phase.o obj/dq_to_modulation.o obj/log_data_rw.o obj/main.o -o dq_decomp_real_data -lm
+# Compile source files
+gcc -c -o obj/main.o main.c -I../../
+gcc -c -o obj/beta_transform_1p.o ../../beta_transform/beta_transform_1p.c -I../../
+gcc -c -o obj/dq_transform_1phase.o ../../dq_transform/dq_transform_1phase.c -I../../
+gcc -c -o obj/dq_to_modulation.o ../../dq_to_modulation/dq_to_modulation.c -I../../
+gcc -c -o obj/log_data_rw.o ../../log_data_rw/log_data_rw.c -I../../
+gcc -c -o obj/notch_filter.o ../../notch_filter/notch_filter.c -I../../
 
+# Link object files
+gcc -o dq_decomp_real_data obj/main.o obj/beta_transform_1p.o obj/dq_transform_1phase.o \
+    obj/dq_to_modulation.o obj/log_data_rw.o obj/notch_filter.o -lm
+
+# Check if build was successful
 if [ $? -eq 0 ]; then
     echo "Build successful!"
+    
+    # Run the C program
+    echo "Running dq_decomp_real_data..."
     ./dq_decomp_real_data
     
-    # Plot using Python (if available)
-    if command -v python3 &> /dev/null; then
+    # Check if the C program ran successfully
+    if [ $? -eq 0 ]; then
+        echo "C program execution successful!"
+        
+        # Run the Python plotting script
+        echo "Generating plots..."
         python3 plot_results.py
+        
+        if [ $? -eq 0 ]; then
+            echo "Plots generated successfully!"
+        else
+            echo "Error generating plots!"
+            exit 1
+        fi
     else
-        echo "Python not found. Please plot log_data_with_beta.csv manually."
+        echo "Error running C program!"
+        exit 1
     fi
 else
     echo "Build failed!"

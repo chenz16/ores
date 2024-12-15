@@ -1,5 +1,5 @@
-#ifndef TABLE_DEF_H
-#define TABLE_DEF_H
+#ifndef STAIRW_BASE_TYPE_H
+#define STAIRW_BASE_TYPE_H
 
 
 #include <stdint.h>
