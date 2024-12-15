@@ -126,7 +126,7 @@ void process_signals(struct LogData* data, struct LogData* data2) {
         
         if (data->beta) data->beta[i] = BetaTransform_1p_Update(&beta_transform, alpha);
         float theta = data->curr_angle ? data->curr_angle[i] : 0.0f;
-        float theta_dq = theta; // - M_PI/2.0;
+        float theta_dq = theta - M_PI/2.0;
         
         if (data->d && data->q && data->beta) {
             dq_transform_1phase(alpha, data->beta[i], theta_dq, &data->d[i], &data->q[i]);
