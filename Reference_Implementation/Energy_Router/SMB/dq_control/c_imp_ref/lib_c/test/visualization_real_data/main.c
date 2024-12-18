@@ -157,10 +157,11 @@ void save_comparison_data(const struct LogData* data, const struct LogData* data
            "q_offline,q_realtime,"
            "filtered_d_offline,filtered_d_realtime,"
            "filtered_q_offline,filtered_q_realtime,"
-           "notch_d,notch_q,computed_angle\n");
+           "notch_d,notch_q,computed_angle,"
+           "mod_index,phase_shift\n");
 
     for (int i = 0; i < data->length; i++) {
-        fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
+        fprintf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n",
                 data->time_stamp[i],
                 data->time_us[i],
                 data->curr_val[i],
@@ -177,14 +178,16 @@ void save_comparison_data(const struct LogData* data, const struct LogData* data
                 data2->filtered_q[i],
                 data->notch_d[i],
                 data->notch_q[i],
-                data->computed_angle[i]);
+                data->computed_angle[i],
+                data->mod_index[i],
+                data->phase_shift[i]);
     }
     
     fclose(file);
 }
 
 int main() {
-    const char* input_file = "充电0A.log";
+    const char* input_file = "(相位差反向)充电0A.log";
     const char* output_file = "comparison_data.csv";
     
     printf("Loading data from %s...\n", input_file);

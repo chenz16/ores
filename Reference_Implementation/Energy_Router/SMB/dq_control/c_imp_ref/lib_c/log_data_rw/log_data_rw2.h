@@ -29,6 +29,13 @@ struct LogData {
     float *v_grid_q;
     float *v_grid_phase;
 
+    float *v_smb_meas;
+    float *v_smb_alpha;
+    float *v_smb_beta;
+    float *v_smb_d;
+    float *v_smb_q;
+    float *v_smb_phase;
+
     float *v_cntl_d_ff;
     float *v_cntl_d_fd;
     float *v_cntl_q_ff;
@@ -37,13 +44,20 @@ struct LogData {
     float *v_cntl_d;
     float *v_cntl_q;
     float *v_cntl_peak;
+    float *v_dc;
+    float *v_cntl_mod_index;
     float *v_cntl_phase_shift;
-    float *vdc;
+    float *v_cntl_tgt_phase;
+    float *v_cntl_valid;
+    float *v_cntl_alpha;
+    float *v_cntl_beta;
+
 
 };
 
 // Function prototypes
 struct LogData* load_log_data(const char* filename);
+struct LogData* init_log_data(int length);
 void cleanup_data(struct LogData* data);
 
 #endif /* LOG_DATA_RW_H */
