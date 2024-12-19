@@ -21,7 +21,7 @@ void init_system_params(SystemParams* params) {
     params->Ts_control = 1.0f / params->control_update_freq;
     params->omega = 2.0f * M_PI * params->signal_freq;
     params->Vg_rms = 77.0f;
-    params->I_desired_rms = 20.0f;
+    params->I_desired_rms = 6.0f;
     params->R = 1.0f;
     params->L = 0.009f;
     params->sim_time = 0.3f;
@@ -78,12 +78,16 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     DQController_Init(&controller_state, &controller_params);
 
     // Declare reference current variables
-    float i_ref_peak = 6.0f;
-    float i_ref_d = 6.0f;  // Target d-axis current
-    float i_ref_q = 0.0f;   // Target q-axis current for unity power factor
+    // float i_ref_peak = 6.0f;
+    // float i_ref_d = 6.0f;  // Target d-axis current
+    // float i_ref_q = 0.0f;   // Target q-axis current for unity power factor
 
     float Vg_peak = params->Vg_rms * sqrtf(2.0f);
     float I_desired_peak = params->I_desired_rms * sqrtf(2.0f);
+    float i_ref_peak = I_desired_peak;
+    float i_ref_d    = I_desired_peak;
+    float i_ref_q    = 0.0f;
+
     float current_t = 0.0f;
     float power_factor_target = 1.0;
 
@@ -97,8 +101,8 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     lpf_init(&lpf_q, params->control_update_freq, lpf_cutoff_freq);
     
     // Initialize notch filters for 50Hz
-    notch_filter_init(&notch_d, params->control_update_freq, 2.0*params->signal_freq, 0.90f);  // Changed from 0.98
-    notch_filter_init(&notch_q, params->control_update_freq, 2.0*params->signal_freq, 0.90f);  // Changed from 0.98
+    notch_filter_init(&notch_d, params->control_update_freq, params->signal_freq, 0.90f);  // Changed from 0.98
+    notch_filter_init(&notch_q, params->control_update_freq, params->signal_freq, 0.90f);  // Changed from 0.98
 
     // Set reference once before the loop
 
@@ -150,10 +154,10 @@ void simulate_system(SystemParams* params, SimulationData* data) {
                            &data->i_ref_d[n], &data->i_ref_q[n]);
         
         // Apply notch filter first
-        // data->i_notch_d[n] = notch_filter_apply(&notch_d, data->i_raw_d[n]);
-        // data->i_notch_q[n] = notch_filter_apply(&notch_q, data->i_raw_q[n]);
-        data->i_notch_d[n] = data->i_raw_d[n];
-        data->i_notch_q[n] = data->i_raw_q[n];
+        data->i_notch_d[n] = notch_filter_apply(&notch_d, data->i_raw_d[n]);
+        data->i_notch_q[n] = notch_filter_apply(&notch_q, data->i_raw_q[n]);
+        // data->i_notch_d[n] = data->i_raw_d[n];
+        // data->i_notch_q[n] = data->i_raw_q[n];
         
         // Then apply low pass filter
         data->i_filtered_d[n] = lpf_process(&lpf_d, data->i_notch_d[n]);
