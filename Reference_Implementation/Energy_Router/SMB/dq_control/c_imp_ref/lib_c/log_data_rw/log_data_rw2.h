@@ -21,6 +21,12 @@ struct LogData {
     float *i_filtered_d;
     float *i_filtered_q;
     float *i_phase_est;
+    
+    float *i_ref;
+    float *i_ref_d;
+    float *i_ref_q;
+    float *i_ref_alpha;
+    float *i_ref_beta;
 
     float *v_grid_meas;
     float *v_grid_alpha;

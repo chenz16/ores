@@ -1,45 +1,123 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
-# Read the CSV file
-data = pd.read_csv('simulation_results.csv')
+def plot_results(filename):
+    # Read data
+    data = pd.read_csv(filename)
+    
+    # Create subplots for different measurements
+    plt.figure(figsize=(15, 20))
+    
+    # 1. Current measurements
+    plt.subplot(5, 2, 1)
+    plt.plot(data['time_stamp'], data['i_meas'], label='Measured')
+    plt.plot(data['time_stamp'], data['i_alpha'], label='Alpha')
+    plt.plot(data['time_stamp'], data['i_beta'], label='Beta')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Current Measurements')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Current (A)')
 
-# Create subplots
-fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
+    # 2. DQ Currents
+    plt.subplot(5, 2, 2)
+    plt.plot(data['time_stamp'], data['i_raw_d'], label='D-axis Raw')
+    plt.plot(data['time_stamp'], data['i_raw_q'], label='Q-axis Raw')
+    plt.plot(data['time_stamp'], data['i_filtered_d'], label='D-axis Filtered')
+    plt.plot(data['time_stamp'], data['i_filtered_q'], label='Q-axis Filtered')
+    plt.grid(True)
+    plt.legend()
+    plt.title('DQ Currents')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Current (A)')
 
-# Time axis
-t = data['time_stamp'].values  # Changed from 't' to 'time_stamp'
+    # 3. Grid Voltage
+    plt.subplot(5, 2, 3)
+    plt.plot(data['time_stamp'], data['v_grid_meas'], label='Measured')
+    plt.plot(data['time_stamp'], data['v_grid_alpha'], label='Alpha')
+    plt.plot(data['time_stamp'], data['v_grid_beta'], label='Beta')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Grid Voltage')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Voltage (V)')
 
-# Plot currents
-ax1.plot(t, data['i_raw_d'], label='i_d raw')
-ax1.plot(t, data['i_notch_d'], label='i_d notch')
-ax1.plot(t, data['i_filtered_d'], label='i_d filtered')
-ax1.set_xlabel('Time (s)')
-ax1.set_ylabel('Current (A)')
-ax1.set_title('D-axis Current')
-ax1.grid(True)
-ax1.legend()
+    # 4. Grid Voltage DQ
+    plt.subplot(5, 2, 4)
+    plt.plot(data['time_stamp'], data['v_grid_d'], label='D-axis')
+    plt.plot(data['time_stamp'], data['v_grid_q'], label='Q-axis')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Grid Voltage DQ')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Voltage (V)')
 
-# Plot q-axis currents
-ax2.plot(t, data['i_raw_q'], label='i_q raw')
-ax2.plot(t, data['i_notch_q'], label='i_q notch')
-ax2.plot(t, data['i_filtered_q'], label='i_q filtered')
-ax2.set_xlabel('Time (s)')
-ax2.set_ylabel('Current (A)')
-ax2.set_title('Q-axis Current')
-ax2.grid(True)
-ax2.legend()
+    # 5. Control Voltage
+    plt.subplot(5, 2, 5)
+    plt.plot(data['time_stamp'], data['v_cntl_alpha'], label='Alpha')
+    plt.plot(data['time_stamp'], data['v_cntl_beta'], label='Beta')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Control Voltage')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Voltage (V)')
 
-# Plot grid voltage
-ax3.plot(t, data['v_grid_d'], label='v_grid_d')
-ax3.plot(t, data['v_grid_q'], label='v_grid_q')
-ax3.set_xlabel('Time (s)')
-ax3.set_ylabel('Voltage (V)')
-ax3.set_title('Grid Voltage')
-ax3.grid(True)
-ax3.legend()
+    # 6. Control Voltage DQ
+    plt.subplot(5, 2, 6)
+    plt.plot(data['time_stamp'], data['v_cntl_d'], label='D-axis')
+    plt.plot(data['time_stamp'], data['v_cntl_q'], label='Q-axis')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Control Voltage DQ')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Voltage (V)')
 
-plt.tight_layout()
-plt.savefig('simulation_results.png')
-plt.show()
-plt.close()
+    # 7. Control Feedforward/Feedback
+    plt.subplot(5, 2, 7)
+    plt.plot(data['time_stamp'], data['v_cntl_d_ff'], label='D-axis FF')
+    plt.plot(data['time_stamp'], data['v_cntl_d_fd'], label='D-axis FB')
+    plt.plot(data['time_stamp'], data['v_cntl_q_ff'], label='Q-axis FF')
+    plt.plot(data['time_stamp'], data['v_cntl_q_fd'], label='Q-axis FB')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Control FF/FB Components')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Voltage (V)')
+
+    # 8. Phase Measurements
+    plt.subplot(5, 2, 8)
+    plt.plot(data['time_stamp'], data['i_phase_est'], label='Current Phase')
+    plt.plot(data['time_stamp'], data['v_cntl_tgt_phase'], label='Control Target Phase')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Phase Measurements')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Phase (rad)')
+
+    # 9. Modulation Parameters
+    plt.subplot(5, 2, 9)
+    plt.plot(data['time_stamp'], data['v_cntl_mod_index'], label='Modulation Index')
+    plt.plot(data['time_stamp'], data['v_cntl_phase_shift'], label='Phase Shift')
+    plt.plot(data['time_stamp'], data['v_cntl_valid'], label='Valid Flag')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Modulation Parameters')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Value')
+
+    # 10. Voltage Magnitudes
+    plt.subplot(5, 2, 10)
+    plt.plot(data['time_stamp'], data['v_cntl_peak'], label='Control Peak')
+    plt.plot(data['time_stamp'], data['v_dc'], label='DC Voltage')
+    plt.grid(True)
+    plt.legend()
+    plt.title('Voltage Magnitudes')
+    plt.xlabel('Time (s)')
+    plt.ylabel('Voltage (V)')
+
+    plt.tight_layout()
+    plt.show()
+
+if __name__ == "__main__":
+    plot_results("simulation_results.csv")  # Replace with your CSV filename

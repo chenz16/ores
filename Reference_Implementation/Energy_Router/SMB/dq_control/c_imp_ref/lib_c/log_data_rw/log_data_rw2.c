@@ -82,12 +82,14 @@ struct LogData* load_log_data(const char* filename) {
 
     // Read data
     for (int i = 0; i < data->length; i++) {
-        if (fscanf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",
+        if (fscanf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",
             &data->time_stamp[i], &data->time_us[i],
             &data->i_meas[i], &data->i_alpha[i], &data->i_beta[i],
             &data->i_raw_d[i], &data->i_raw_q[i],
             &data->i_notch_d[i], &data->i_notch_q[i],
             &data->i_filtered_d[i], &data->i_filtered_q[i], &data->i_phase_est[i],
+            &data->i_ref[i], &data->i_ref_d[i], &data->i_ref_q[i],
+            &data->i_ref_alpha[i], &data->i_ref_beta[i],
             &data->v_grid_meas[i], &data->v_grid_alpha[i], &data->v_grid_beta[i],
             &data->v_grid_d[i], &data->v_grid_q[i], &data->v_grid_phase[i],
             &data->v_smb_meas[i], &data->v_smb_alpha[i], &data->v_smb_beta[i],
@@ -98,7 +100,7 @@ struct LogData* load_log_data(const char* filename) {
             &data->v_cntl_peak[i], &data->v_dc[i],
             &data->v_cntl_mod_index[i], &data->v_cntl_phase_shift[i],
             &data->v_cntl_tgt_phase[i], &data->v_cntl_valid[i],
-            &data->v_cntl_alpha[i], &data->v_cntl_beta[i]) != 40) {
+            &data->v_cntl_alpha[i], &data->v_cntl_beta[i]) != 43) {
             
             fprintf(stderr, "Error reading data at line %d\n", i + 1);
             cleanup_data(data);
@@ -153,6 +155,10 @@ void cleanup_data(struct LogData* data) {
     free(data->v_cntl_valid);
     free(data->v_cntl_alpha);
     free(data->v_cntl_beta);
+    free(data->i_ref_d);
+    free(data->i_ref_q);
+    free(data->i_ref_alpha);
+    free(data->i_ref_beta);
 
     // Free the structure itself
     free(data);
@@ -211,6 +217,12 @@ struct LogData* init_log_data(int length) {
     data->v_cntl_valid = (float*)malloc(length * sizeof(float));
     data->v_cntl_alpha = (float*)malloc(length * sizeof(float));
     data->v_cntl_beta = (float*)malloc(length * sizeof(float));
+    data->i_ref_d = (float*)malloc(length * sizeof(float));
+    data->i_ref_q = (float*)malloc(length * sizeof(float));
+    data->i_ref_alpha = (float*)malloc(length * sizeof(float));
+    data->i_ref_beta = (float*)malloc(length * sizeof(float));
+    data->i_ref = (float*)malloc(length * sizeof(float));
+
 
     return data;
 }

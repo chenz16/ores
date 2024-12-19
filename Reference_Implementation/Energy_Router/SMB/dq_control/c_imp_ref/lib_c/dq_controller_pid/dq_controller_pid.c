@@ -54,6 +54,13 @@ void DQController_Update(DQController_State* state, DQController_Params* params)
     state->vq_fb = params->kp_q * error_q + params->ki_q * state->integral_q;
     state->vq_ff = state->vq_grid + params->omega * params->L * state->id_meas;
     state->vq_out = state->vq_fb + state->vq_ff;
+
+    // Add debug prints
+    // printf("Debug DQ Controller:\n");
+    // printf("vd_fb: %.2f, vd_ff: %.2f, vd_out: %.2f\n", 
+    //        state->vd_fb, state->vd_ff, state->vd_out);
+    // printf("vq_fb: %.2f, vq_ff: %.2f, vq_out: %.2f\n", 
+    //        state->vq_fb, state->vq_ff, state->vq_out);
 }
 
 void DQController_SetReference(DQController_State* state, float id_ref, float iq_ref) {

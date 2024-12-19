@@ -10,21 +10,21 @@
 #include "../../lowpass_filter_1storder/lowpass_filter_1storder.h"
 #include "../../notch_filter/notch_filter.h"
 
-#define SET_D_AXIS_AS_COS 0
+#define SET_D_AXIS_AS_COS 1
 
 void init_system_params(SystemParams* params) {
     params->signal_freq = 50.0f;
     params->plant_sim_freq = 1000000.0f; //
-    params->control_update_freq = 10000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
-    params->ratio_cntlFreqReduction = 1; // control 频率是 sensing 频率的 1/ratio_cntlFreqReduction
+    params->control_update_freq = 1000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
+    params->ratio_cntlFreqReduction = 20; // control 频率是 sensing 频率的 1/ratio_cntlFreqReduction
     params->Ts_plant_sim = 1.0f / params->plant_sim_freq;
     params->Ts_control = 1.0f / params->control_update_freq;
     params->omega = 2.0f * M_PI * params->signal_freq;
-    params->Vg_rms = 230.0f;
+    params->Vg_rms = 77.0f;
     params->I_desired_rms = 20.0f;
-    params->R = 0.1f;
-    params->L = 0.005f;
-    params->sim_time = 0.4f;
+    params->R = 1.0f;
+    params->L = 0.009f;
+    params->sim_time = 0.3f;
     printf("Debug Ts values:\n");
     printf("Ts_plant_sim: %.6f\n", params->Ts_plant_sim);
     printf("Ts_control: %.6f\n", params->Ts_control);
@@ -38,19 +38,21 @@ SimulationData* allocate_simulation_data(int length) {
     return init_log_data(length);
 }
 
+float k = 3.0;
+
 void simulate_system(SystemParams* params, SimulationData* data) {
-    // Initialize controller with matching gains from Python
+    // Scale integral gains for high frequency sampling
     DQController_Params controller_params = {
-        .kp_d = 10.0f,        // Match Python kp value
-        .ki_d = 200.0f,      // Match Python ki value
-        .kp_q = 10.0f,
-        .ki_q = 200.0f,
+        .kp_d = 1.0f * k,
+        .ki_d = 40.0f * k, // params->ratio_cntlFreqReduction,
+        .kp_q = 1.0f * k,
+        .ki_q = 40.0f * k,  // params->ratio_cntlFreqReduction,
         .omega = params->omega,
         .Ts = params->Ts_control,
-        .integral_max =  300.0f,   // Suggested value based on 230V RMS system
-        .integral_min =  -300.0f,
-        .R = params->R,      // Use system R value (0.1 ohm)
-        .L = params->L       // Use system L value (0.005 H)
+        .integral_max = 100.0f,    // Increased from 300.0
+        .integral_min = -100.0f,   // Increased from -300.0
+        .R = params->R,
+        .L = params->L
     };
 
     // Rest of initialization remains the same
@@ -75,13 +77,11 @@ void simulate_system(SystemParams* params, SimulationData* data) {
                          params->control_update_freq);
     DQController_Init(&controller_state, &controller_params);
 
-    // Modify reference currents for single-phase system
-    // For unity power factor (current in phase with voltage):
-    //这里模拟，电流电压同步，功率因素为0 的情况；电流经过dq变换后， d = 0， q = -幅值
-    // float i_ref_d = 20.0f;      // Changed from 20.0f to 0.0f
-    // float i_ref_q = -0.0f;    // Changed from 0.0f to -20.0f
-    // DQController_SetReference(&controller_state, i_ref_d, i_ref_q);
-    // Grid voltage initialization
+    // Declare reference current variables
+    float i_ref_peak = 6.0f;
+    float i_ref_d = 6.0f;  // Target d-axis current
+    float i_ref_q = 0.0f;   // Target q-axis current for unity power factor
+
     float Vg_peak = params->Vg_rms * sqrtf(2.0f);
     float I_desired_peak = params->I_desired_rms * sqrtf(2.0f);
     float current_t = 0.0f;
@@ -92,16 +92,19 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     NotchFilter notch_d, notch_q;
     
     // Initialize low pass filters (e.g., 500Hz cutoff frequency)
-    float lpf_cutoff_freq = 500.0f;
+    float lpf_cutoff_freq = 100.0f;  // Reduced from 500Hz to provide better filtering
     lpf_init(&lpf_d, params->control_update_freq, lpf_cutoff_freq);
     lpf_init(&lpf_q, params->control_update_freq, lpf_cutoff_freq);
     
     // Initialize notch filters for 50Hz
-    notch_filter_init(&notch_d, params->control_update_freq, params->signal_freq, 0.98f);
-    notch_filter_init(&notch_q, params->control_update_freq, params->signal_freq, 0.98f);
+    notch_filter_init(&notch_d, params->control_update_freq, 2.0*params->signal_freq, 0.90f);  // Changed from 0.98
+    notch_filter_init(&notch_q, params->control_update_freq, 2.0*params->signal_freq, 0.90f);  // Changed from 0.98
+
+    // Set reference once before the loop
 
     // Main simulation loop
     dq_voltage_t dq_voltage_last = {0};
+    float theta_dq = 0.0f;
 
 
 
@@ -111,70 +114,71 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     for (int n = 0; n < data->length - 1; n++) {
         float t = data->time_stamp[n];
         float theta = params->omega * t;
-        float theta_dq = 0.0f;
         
         if (SET_D_AXIS_AS_COS)
         {
-            // Grid voltage in alpha-beta
-            data->v_grid_meas[n] = Vg_peak * cosf(theta);
-            data->v_grid_alpha[n] = data->v_grid_meas[n];
-            data->v_grid_beta[n] = Vg_peak * sinf(theta);  // 90-degree lag
+            data->v_grid_meas[n]  = Vg_peak * cosf(theta);
+            data->v_grid_alpha[n] = data->v_grid_meas[n];    // α = cos(θ)
+            data->v_grid_beta[n]  = Vg_peak * sinf(theta);   // β = sin(θ)
+            theta_dq = theta;                                 // No rotation
 
-            data->i_meas[n] = I_desired_peak * cosf(theta);
-            data->i_alpha[n] = data->i_meas[n];
-            data->i_beta[n] = I_desired_peak * sinf(theta);
-            theta_dq = theta;
+            data->i_ref_alpha[n] = i_ref_peak * cosf(theta);
+            data->i_ref_beta[n]  = i_ref_peak * sinf(theta);
         }
-
         else 
         {
-                        // Grid voltage in alpha-beta
-            data->v_grid_meas[n] = Vg_peak * sinf(theta);
-            data->v_grid_alpha[n] = data->v_grid_meas[n];
-            data->v_grid_beta[n] = - Vg_peak * cosf(theta);  // 90-degree lag
-
-            data->i_meas[n] = I_desired_peak * sinf(theta);
-            data->i_alpha[n] = data->i_meas[n];
-            data->i_beta[n] = -I_desired_peak * cosf(theta);
-            theta = theta - M_PI/2.0;
-            theta_dq = theta;
+            data->v_grid_meas[n]  = Vg_peak * sinf(theta);
+            data->v_grid_alpha[n] = data->v_grid_meas[n];    // α = sin(θ)
+            data->v_grid_beta[n]  = -Vg_peak * cosf(theta);  // β = -cos(θ)
+            theta_dq = theta - M_PI/2.0;                     // -90° rotation
+            data->i_ref_alpha[n] = i_ref_peak * sinf(theta);
+            data->i_ref_beta[n]  = -i_ref_peak * cosf(theta);
         }
 
         data->i_alpha[n] = current_t;
         data->i_beta[n] = BetaTransform_1p_Update(&beta_transform_1p, data->i_alpha[n]);
-        
+
         // Transform to dq using adjusted angle
         dq_transform_1phase(data->v_grid_alpha[n], data->v_grid_beta[n], theta_dq,
                            &data->v_grid_d[n], &data->v_grid_q[n]);
 
+
         dq_transform_1phase(data->i_alpha[n], data->i_beta[n], theta_dq,
                            &data->i_raw_d[n], &data->i_raw_q[n]);
+
+        dq_transform_1phase(data->i_ref_alpha[n], data->i_ref_beta[n], theta_dq,
+                           &data->i_ref_d[n], &data->i_ref_q[n]);
         
         // Apply notch filter first
-        data->i_notch_d[n] = notch_filter_apply(&notch_d, data->i_raw_d[n]);
-        data->i_notch_q[n] = notch_filter_apply(&notch_q, data->i_raw_q[n]);
+        // data->i_notch_d[n] = notch_filter_apply(&notch_d, data->i_raw_d[n]);
+        // data->i_notch_q[n] = notch_filter_apply(&notch_q, data->i_raw_q[n]);
+        data->i_notch_d[n] = data->i_raw_d[n];
+        data->i_notch_q[n] = data->i_raw_q[n];
         
         // Then apply low pass filter
         data->i_filtered_d[n] = lpf_process(&lpf_d, data->i_notch_d[n]);
         data->i_filtered_q[n] = lpf_process(&lpf_q, data->i_notch_q[n]);
 
-        data->v_cntl_d[n] = DQController_GetVoltageD(&controller_state);
-        data->v_cntl_q[n] = DQController_GetVoltageQ(&controller_state);
-
+        
+        printf("=========time: %.6f\n", t);
         printf("v_grid_d: %.6f\n", data->v_grid_d[n]);
         printf("v_grid_q: %.6f\n", data->v_grid_q[n]);
-        printf("i_d_desired: %.6f\n", data->i_raw_d[n]);
-        printf("i_q_desired: %.6f\n", data->i_raw_q[n]);
-        printf("i_d: %.6f\n", data->i_filtered_d[n]);
-        printf("i_q: %.6f\n", data->i_filtered_q[n]);
+        printf("i_d_raw: %.6f\n", data->i_raw_d[n]);
+        printf("i_q_raw: %.6f\n", data->i_raw_q[n]);
+        printf("i_d_filtered: %.6f\n", data->i_filtered_d[n]);
+        printf("i_q_filtered: %.6f\n", data->i_filtered_q[n]);
+        printf("i_ref_d: %.6f\n", data->i_ref_d[n]);
+        printf("i_ref_q: %.6f\n", data->i_ref_q[n]);
         // Controller update
 
         ///控制器的跟新：输入为 电流dq， 输出为电压dq
         ///注意：为了计算法方便， 这里是跟sensing 的频率一致，实际按照控制频率
+        DQController_SetReference(&controller_state, data->i_ref_d[n], data->i_ref_q[n]);
+
         DQController_UpdateMeasurements(&controller_state, 
                                       data->i_filtered_d[n], data->i_filtered_q[n],
                                       data->v_grid_d[n], data->v_grid_q[n]);
-        DQController_SetReference(&controller_state, data->i_raw_d[n], data->i_raw_q[n]);
+        // DQController_SetReference(&controller_state, i_ref_d, i_ref_q);
 
         DQController_Update(&controller_state, &controller_params);
 
@@ -183,15 +187,22 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         data->v_cntl_d_fd[n] = DQController_GetVoltageD_FB(&controller_state);
         data->v_cntl_q_ff[n] = DQController_GetVoltageQ_FF(&controller_state);
         data->v_cntl_q_fd[n] = DQController_GetVoltageQ_FB(&controller_state);
+        data->v_cntl_d[n] = DQController_GetVoltageD(&controller_state);
+        data->v_cntl_q[n] = DQController_GetVoltageQ(&controller_state);
+
+        printf("v_cntl_d_ff, fd, total: %.6f, %.6f, %.6f\n", data->v_cntl_d_ff[n], data->v_cntl_d_fd[n], data->v_cntl_d[n]);
+        printf("v_cntl_q_ff, fd, total: %.6f, %.6f, %.6f\n", data->v_cntl_q_ff[n], data->v_cntl_q_fd[n], data->v_cntl_q[n]);
+
+
 
         // Calculate modulation parameters
         dq_voltage_t dq_voltage = {
             .vd = DQController_GetVoltageD(&controller_state),
             .vq = DQController_GetVoltageQ(&controller_state),
-            .vdc = 400.0f
+            .vdc = 192.0f
         };
        
-        ///调制参数跟新：输入为电压dq， 输出为调制系数和相位偏移
+        ///调制参数跟新：输入为电压dq， 输出为调制系数相位偏移
         modulation_result_t mod_result = dq_to_modulation_calculate(dq_voltage);
        /// 上层控制部分结束， 下面开始仿真 
 
@@ -199,15 +210,17 @@ void simulate_system(SystemParams* params, SimulationData* data) {
        /// 调制参数更新
        dq_voltage.vd = mod_result.vd_adjust;
        dq_voltage.vq = mod_result.vq_adjust;
+        data->v_cntl_d[n]  = dq_voltage.vd;
+        data->v_cntl_q[n]  = dq_voltage.vq;
         /// /////////////////////////////////////////////////////////////
         /// 此处仿真逆变器电压波形生成，实际系统的 由PWM + 逆变器的物理反应为这部分
         if (n%params->ratio_cntlFreqReduction==0)
         {
           inverse_dq_transform_1phase(dq_voltage.vd,
-                                    dq_voltage.vq,
-                                    theta_dq,
-                                    &data->v_cntl_alpha[n],
-                                    &data->v_cntl_beta[n]);
+                                      dq_voltage.vq,
+                                      theta_dq,
+                                      &data->v_cntl_alpha[n],
+                                      &data->v_cntl_beta[n]);
 
          data->v_smb_alpha[n] = data->v_cntl_alpha[n];
          data->v_smb_beta[n] = data->v_cntl_beta[n];
@@ -238,7 +251,8 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         plant_params.plant_sim_freq = params->plant_sim_freq;
         current_t = PlantSimulator_Update(&plant_state, &plant_params,
                                                    data->v_smb_alpha[n],
-                                                   data->v_grid_alpha[n]);
+                                                   data->v_grid_alpha[n], 
+                                                   SET_D_AXIS_AS_COS);
 
         data->i_meas[n] = current_t;
         data->time_stamp[n + 1] = data->time_stamp[n] + params->Ts_control;
@@ -260,6 +274,17 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         data->v_smb_d[n] = data->v_cntl_d[n];
         data->v_smb_q[n] = data->v_cntl_q[n];
         data->v_smb_phase[n] = data->v_cntl_tgt_phase[n];
+
+        // Add after controller update
+        if (n % 10 == 0) {  // Print every 1000 samples to avoid flooding
+            printf("Debug - Control outputs:\n");
+            printf("v_d: %.2f, v_q: %.2f\n", 
+                   DQController_GetVoltageD(&controller_state),
+                   DQController_GetVoltageQ(&controller_state));
+            printf("Current error d: %.2f, q: %.2f\n",
+                   data->i_raw_d[n] - data->i_filtered_d[n],
+                   data->i_raw_q[n] - data->i_filtered_q[n]);
+        }
     }
 }
 
