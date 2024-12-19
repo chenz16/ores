@@ -8,7 +8,8 @@ void PlantSimulator_Init(PlantState* state, PlantParams* params) {
 }
 
 float PlantSimulator_Update(PlantState* state, PlantParams* params, 
-                          float v_inverter, float v_grid) {
+                          float v_inverter, float v_grid, 
+                          bool cos_flag) {
     // RK2 (Heun's method) integration
     float plant_freq = params->plant_sim_freq;
     float return_freq = params->control_update_freq;
@@ -24,8 +25,22 @@ float PlantSimulator_Update(PlantState* state, PlantParams* params,
         exit(1);
     }
     for (int i = 0; i < N; i++) {
-        float v_grid_t = Vg_mag *cosf(theta + 2*M_PI * plant_freq * params->Ts * i) ;
+        float v_grid_t = 0;
+        if(cos_flag)
+        {
+            v_grid_t = Vg_mag *cosf(theta + 2*M_PI * plant_freq * params->Ts * i) ;
+        }
+        else
+        {
+            v_grid_t = Vg_mag *sinf(theta + 2*M_PI * plant_freq * params->Ts * i) ;
+        }
+
         float di_dt1 = (v_inverter - v_grid_t - params->R * state->current) / params->L;
+        // if (i== N-1)
+        // {
+        //     printf("*********v_inverter: %.6f\n", v_inverter);
+        //     printf("*********v_grid_t: %.6f\n", v_grid_t);
+        // }
         state->current += di_dt1 * params->Ts / 2.0f;
     }
     return state->current;

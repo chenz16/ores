@@ -2,6 +2,7 @@
 #define PLANT_SIMULATOR_H
 
 #include <math.h>
+#include <stdbool.h>
 
 typedef struct {
     float R;      // Resistance in Ohms
@@ -22,6 +23,6 @@ typedef struct {
 
 void PlantSimulator_Init(PlantState* state, PlantParams* params);
 float PlantSimulator_Update(PlantState* state, PlantParams* params, 
-                          float v_inverter, float v_grid);
+                          float v_inverter, float v_grid, bool cos_flag);
 
 #endif /* PLANT_SIMULATOR_H */

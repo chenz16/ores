@@ -29,45 +29,38 @@ void DQController_Reset(DQController_State* state) {
 }
 
 void DQController_Update(DQController_State* state, DQController_Params* params) {
-    // Calculate current errors
+    // D-axis control
     float error_d = state->id_ref - state->id_meas;
+    state->integral_d += error_d * params->Ts;
+    
+    // Anti-windup
+    if (state->integral_d > params->integral_max) state->integral_d = params->integral_max;
+    if (state->integral_d < params->integral_min) state->integral_d = params->integral_min;
+    
+    // Calculate feedback and feedforward components separately
+    state->vd_fb = params->kp_d * error_d + params->ki_d * state->integral_d;
+    state->vd_ff = state->vd_grid - params->omega * params->L * state->iq_meas;
+    state->vd_out = state->vd_fb + state->vd_ff;
+
+    // Q-axis control
     float error_q = state->iq_ref - state->iq_meas;
+    state->integral_q += error_q * params->Ts;
+    
+    // Anti-windup
+    if (state->integral_q > params->integral_max) state->integral_q = params->integral_max;
+    if (state->integral_q < params->integral_min) state->integral_q = params->integral_min;
+    
+    // Calculate feedback and feedforward components separately
+    state->vq_fb = params->kp_q * error_q + params->ki_q * state->integral_q;
+    state->vq_ff = state->vq_grid + params->omega * params->L * state->id_meas;
+    state->vq_out = state->vq_fb + state->vq_ff;
 
-    // Update integral terms with anti-windup
-    state->integral_d += error_d * params->ki_d * params->Ts;
-    state->integral_q += error_q * params->ki_q * params->Ts;
-
-    printf("integral_d: %f, integral_q: %f\n", state->integral_d, state->integral_q);
-
-    // Apply integral limits
-    if (state->integral_d > params->integral_max) {
-        state->integral_d = params->integral_max;
-    } else if (state->integral_d < params->integral_min) {
-        state->integral_d = params->integral_min;
-    }
-
-    if (state->integral_q > params->integral_max) {
-        state->integral_q = params->integral_max;
-    } else if (state->integral_q < params->integral_min) {
-        state->integral_q = params->integral_min;
-    }
-
-    // PI controller outputs
-    float vd_pi = params->kp_d * error_d + state->integral_d;
-    float vq_pi = params->kp_q * error_q + state->integral_q;
-
-    // Enhanced feed-forward terms with R, L compensation
-    float vd_ff = state->vd_grid                   // Grid voltage
-                 - params->R * state->id_meas         // Resistive drop
-                 + params->L * params->omega * state->iq_meas;  // Cross-coupling (ωL*Iq)
-                
-    float vq_ff = state->vq_grid                    // Grid voltage
-                 - params->R * state->iq_meas         // Resistive drop
-                 - params->L * params->omega * state->id_meas;  // Cross-coupling (-ωL*Id)
-
-    // Combine PI output and feed-forward terms
-    state->vd_out = vd_pi + vd_ff;
-    state->vq_out = vq_pi + vq_ff;
+    // Add debug prints
+    // printf("Debug DQ Controller:\n");
+    // printf("vd_fb: %.2f, vd_ff: %.2f, vd_out: %.2f\n", 
+    //        state->vd_fb, state->vd_ff, state->vd_out);
+    // printf("vq_fb: %.2f, vq_ff: %.2f, vq_out: %.2f\n", 
+    //        state->vq_fb, state->vq_ff, state->vq_out);
 }
 
 void DQController_SetReference(DQController_State* state, float id_ref, float iq_ref) {
@@ -108,4 +101,20 @@ float DQController_GetVoltageD(DQController_State* state) {
 
 float DQController_GetVoltageQ(DQController_State* state) {
     return state->vq_out;
+}
+
+float DQController_GetVoltageD_FF(DQController_State* state) {
+    return state->vd_ff;
+}
+
+float DQController_GetVoltageD_FB(DQController_State* state) {
+    return state->vd_fb;
+}
+
+float DQController_GetVoltageQ_FF(DQController_State* state) {
+    return state->vq_ff;
+}
+
+float DQController_GetVoltageQ_FB(DQController_State* state) {
+    return state->vq_fb;
 }
