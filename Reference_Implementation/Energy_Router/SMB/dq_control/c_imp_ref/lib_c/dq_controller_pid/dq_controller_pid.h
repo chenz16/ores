@@ -29,6 +29,10 @@ typedef struct {
     float integral_q;    // Integral term for q-axis
     float vd_out;        // Output voltage d component
     float vq_out;        // Output voltage q component
+    float vd_ff;         // Feedforward voltage d component
+    float vd_fb;         // Feedback voltage d component
+    float vq_ff;         // Feedforward voltage q component
+    float vq_fb;         // Feedback voltage q component
 } DQController_State;
 
 // Function prototypes
@@ -42,8 +46,12 @@ void DQController_SetReference(DQController_State* state, float id_ref, float iq
 void DQController_UpdateMeasurements(DQController_State* state, float id_meas, float iq_meas, 
                                    float vd_grid, float vq_grid);
 
-// Add these function declarations
+// Getter functions
 float DQController_GetVoltageD(DQController_State* state);
 float DQController_GetVoltageQ(DQController_State* state);
+float DQController_GetVoltageD_FF(DQController_State* state);
+float DQController_GetVoltageD_FB(DQController_State* state);
+float DQController_GetVoltageQ_FF(DQController_State* state);
+float DQController_GetVoltageQ_FB(DQController_State* state);
 
 #endif /* DQ_CONTROLLER_PID_H */

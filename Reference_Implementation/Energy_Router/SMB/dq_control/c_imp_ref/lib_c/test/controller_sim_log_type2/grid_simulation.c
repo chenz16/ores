@@ -178,10 +178,16 @@ void simulate_system(SystemParams* params, SimulationData* data) {
 
         DQController_Update(&controller_state, &controller_params);
 
+        // Log feedforward and feedback components
+        data->v_cntl_d_ff[n] = DQController_GetVoltageD_FF(&controller_state);
+        data->v_cntl_d_fd[n] = DQController_GetVoltageD_FB(&controller_state);
+        data->v_cntl_q_ff[n] = DQController_GetVoltageQ_FF(&controller_state);
+        data->v_cntl_q_fd[n] = DQController_GetVoltageQ_FB(&controller_state);
+
         // Calculate modulation parameters
         dq_voltage_t dq_voltage = {
-            .vd = DQController_GetVoltageD(&controller_state),  // Include grid feedforward
-            .vq = DQController_GetVoltageQ(&controller_state),  // Include grid feedforward
+            .vd = DQController_GetVoltageD(&controller_state),
+            .vq = DQController_GetVoltageQ(&controller_state),
             .vdc = 400.0f
         };
        
@@ -237,6 +243,23 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         data->i_meas[n] = current_t;
         data->time_stamp[n + 1] = data->time_stamp[n] + params->Ts_control;
         ///////////////////// 模拟结束/////////////////////////////////////
+
+        // Add these lines before the fprintf section
+        data->v_cntl_peak[n] = sqrtf(dq_voltage.vd * dq_voltage.vd + dq_voltage.vq * dq_voltage.vq);
+        data->v_dc[n] = dq_voltage.vdc;  // This is 400.0f as defined earlier
+        data->v_cntl_tgt_phase[n] = atan2f(dq_voltage.vq, dq_voltage.vd) + theta_dq;
+
+        // Convert time to microseconds
+        data->time_us[n] = data->time_stamp[n] * 1000000.0f;
+
+        // Current phase estimation (phase from dq + reference frame angle)
+        data->i_phase_est[n] = atan2f(data->i_raw_q[n], data->i_raw_d[n]) + theta_dq;
+
+        // SMB measurements (equal to control values)
+        data->v_smb_meas[n] = data->v_cntl_alpha[n];
+        data->v_smb_d[n] = data->v_cntl_d[n];
+        data->v_smb_q[n] = data->v_cntl_q[n];
+        data->v_smb_phase[n] = data->v_cntl_tgt_phase[n];
     }
 }
 
