@@ -4,12 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 
 // Define the structure
 struct LogData {
     int length;
-    float *time_stamp;
-    float *time_us;
+    uint64_t *id;
+    uint64_t *time_us;
 
     float *i_meas;
     float *i_alpha;

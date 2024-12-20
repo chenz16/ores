@@ -41,6 +41,7 @@ SimulationData* allocate_simulation_data(int length) {
 float k = 3.0;
 
 void simulate_system(SystemParams* params, SimulationData* data) {
+
     // Scale integral gains for high frequency sampling
     DQController_Params controller_params = {
         .kp_d = 1.0f * k,
@@ -116,7 +117,10 @@ void simulate_system(SystemParams* params, SimulationData* data) {
      * Loop for sensing and filter, 1k-20kHz
      ***/
     for (int n = 0; n < data->length - 1; n++) {
-        float t = data->time_stamp[n];
+        data->time_us[n] = (uint64_t)(n * params->Ts_control * 1000000.0f);
+        data->id[n] = n;
+        
+        float t = data->time_us[n] / 1000000.0f;
         float theta = params->omega * t;
         
         if (SET_D_AXIS_AS_COS)
@@ -149,11 +153,12 @@ void simulate_system(SystemParams* params, SimulationData* data) {
 
         dq_transform_1phase(data->i_alpha[n], data->i_beta[n], theta_dq,
                            &data->i_raw_d[n], &data->i_raw_q[n]);
-
-        dq_transform_1phase(data->i_ref_alpha[n], data->i_ref_beta[n], theta_dq,
-                           &data->i_ref_d[n], &data->i_ref_q[n]);
         
-        // Apply notch filter first
+        // dq_transform_1phase(data->i_ref_alpha[n], data->i_ref_beta[n], theta_dq,
+        //                    &data->i_ref_d[n], &data->i_ref_q[n]);
+        data->i_ref_d[n] = i_ref_peak;
+        data->i_ref_q[n] = 0.0f;
+        
         data->i_notch_d[n] = notch_filter_apply(&notch_d, data->i_raw_d[n]);
         data->i_notch_q[n] = notch_filter_apply(&notch_q, data->i_raw_q[n]);
         // data->i_notch_d[n] = data->i_raw_d[n];
@@ -258,18 +263,14 @@ void simulate_system(SystemParams* params, SimulationData* data) {
                                                    data->v_grid_alpha[n], 
                                                    SET_D_AXIS_AS_COS);
 
-        data->i_meas[n] = current_t;
-        data->time_stamp[n + 1] = data->time_stamp[n] + params->Ts_control;
+        data->i_alpha[n+1] = current_t;
+        data->i_meas[n+1] = current_t;
         ///////////////////// 模拟结束/////////////////////////////////////
 
         // Add these lines before the fprintf section
         data->v_cntl_peak[n] = sqrtf(dq_voltage.vd * dq_voltage.vd + dq_voltage.vq * dq_voltage.vq);
         data->v_dc[n] = dq_voltage.vdc;  // This is 400.0f as defined earlier
         data->v_cntl_tgt_phase[n] = atan2f(dq_voltage.vq, dq_voltage.vd) + theta_dq;
-
-        // Convert time to microseconds
-        data->time_us[n] = data->time_stamp[n] * 1000000.0f;
-
         // Current phase estimation (phase from dq + reference frame angle)
         data->i_phase_est[n] = atan2f(data->i_raw_q[n], data->i_raw_d[n]) + theta_dq;
 
@@ -289,7 +290,19 @@ void simulate_system(SystemParams* params, SimulationData* data) {
                    data->i_raw_d[n] - data->i_filtered_d[n],
                    data->i_raw_q[n] - data->i_filtered_q[n]);
         }
+
+        // Update time for next iteration (in microseconds)
+        data->time_us[n + 1] = data->time_us[n] + (params->Ts_control * 1000000.0f);
+        data->id[n + 1] = n + 1;  // Update ID for next iteration
+
+        data->v_cntl_tgt_phase[n] = wrap_angle(data->v_cntl_tgt_phase[n]);
+        data->v_grid_phase[n] = wrap_angle(data->v_grid_phase[n]);
+        data->i_phase_est[n] = wrap_angle(data->i_phase_est[n]);
     }
+
+    // Handle the last element
+    data->time_us[data->length-1] = (uint64_t)((data->length-1) * params->Ts_control * 1000000.0f);
+    data->id[data->length-1] = data->length-1;
 }
 
 void free_simulation_data(SimulationData* data) {
@@ -305,9 +318,10 @@ void save_results_to_file(const char* filename, SimulationData* data) {
         return;
     }
 
-    // Write header with all columns matching LogData structure
-    fprintf(fp, "time_stamp,time_us,"
+    // Add i_ref_d and i_ref_q to header
+    fprintf(fp, "id,time_us,"
            "i_meas,i_alpha,i_beta,i_raw_d,i_raw_q,i_notch_d,i_notch_q,i_filtered_d,i_filtered_q,i_phase_est,"
+           "i_ref_d,i_ref_q,"  // Add these fields
            "v_grid_meas,v_grid_alpha,v_grid_beta,v_grid_d,v_grid_q,v_grid_phase,"
            "v_smb_meas,v_smb_alpha,v_smb_beta,v_smb_d,v_smb_q,v_smb_phase,"
            "v_cntl_d_ff,v_cntl_d_fd,v_cntl_q_ff,v_cntl_q_fd,"
@@ -315,22 +329,24 @@ void save_results_to_file(const char* filename, SimulationData* data) {
            "v_cntl_mod_index,v_cntl_phase_shift,v_cntl_tgt_phase,v_cntl_valid,"
            "v_cntl_alpha,v_cntl_beta\n");
 
-    // Write data rows
+    // Write data rows with i_ref_d and i_ref_q
     for (int n = 0; n < data->length; n++) {
-        fprintf(fp, "%.6f,%.6f,"  // time stamps
+        fprintf(fp, "%lu,%lu,"  // id and time_us
                "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,"  // current measurements
+               "%.6f,%.6f,"  // Add i_ref_d and i_ref_q
                "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,"  // grid voltage
                "%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,"  // SMB voltage
                "%.6f,%.6f,%.6f,%.6f,"  // control feedforward/feedback
                "%.6f,%.6f,%.6f,%.6f,"  // control outputs
                "%.6f,%.6f,%.6f,%.6f,"  // modulation parameters
                "%.6f,%.6f\n",  // control alpha/beta
-               data->time_stamp[n], data->time_us[n],
+               data->id[n], data->time_us[n],
                data->i_meas[n], data->i_alpha[n], data->i_beta[n],
                data->i_raw_d[n], data->i_raw_q[n],
                data->i_notch_d[n], data->i_notch_q[n],
                data->i_filtered_d[n], data->i_filtered_q[n],
                data->i_phase_est[n],
+               data->i_ref_d[n], data->i_ref_q[n],  // Add these values
                data->v_grid_meas[n], data->v_grid_alpha[n], data->v_grid_beta[n],
                data->v_grid_d[n], data->v_grid_q[n], data->v_grid_phase[n],
                data->v_smb_meas[n], data->v_smb_alpha[n], data->v_smb_beta[n],

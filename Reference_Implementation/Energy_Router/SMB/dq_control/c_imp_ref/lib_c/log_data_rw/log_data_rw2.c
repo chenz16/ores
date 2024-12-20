@@ -32,8 +32,20 @@ struct LogData* load_log_data(const char* filename) {
             return NULL; \
         }
 
-    ALLOC_ARRAY(time_stamp);
-    ALLOC_ARRAY(time_us);
+    // Special allocation for id and time arrays using uint64_t
+    data->id = (uint64_t*)malloc(data->length * sizeof(uint64_t));
+    if (!data->id) {
+        cleanup_data(data);
+        fclose(file);
+        return NULL;
+    }
+    data->time_us = (uint64_t*)malloc(data->length * sizeof(uint64_t));
+    if (!data->time_us) {
+        cleanup_data(data);
+        fclose(file);
+        return NULL;
+    }
+
     ALLOC_ARRAY(i_meas);
     ALLOC_ARRAY(i_alpha);
     ALLOC_ARRAY(i_beta);
@@ -82,8 +94,8 @@ struct LogData* load_log_data(const char* filename) {
 
     // Read data
     for (int i = 0; i < data->length; i++) {
-        if (fscanf(file, "%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",
-            &data->time_stamp[i], &data->time_us[i],
+        if (fscanf(file, "%lu,%lu,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",
+            &data->id[i], &data->time_us[i],
             &data->i_meas[i], &data->i_alpha[i], &data->i_beta[i],
             &data->i_raw_d[i], &data->i_raw_q[i],
             &data->i_notch_d[i], &data->i_notch_q[i],
@@ -117,7 +129,7 @@ void cleanup_data(struct LogData* data) {
     if (data == NULL) return;
 
     // Free all arrays
-    free(data->time_stamp);
+    free(data->id);
     free(data->time_us);
     free(data->i_meas);
     free(data->i_alpha);
@@ -179,8 +191,8 @@ struct LogData* init_log_data(int length) {
     data->length = length;
 
     // Allocate memory for all arrays
-    data->time_stamp = (float*)malloc(length * sizeof(float));
-    data->time_us = (float*)malloc(length * sizeof(float));
+    data->id = (uint64_t*)malloc(length * sizeof(uint64_t));
+    data->time_us = (uint64_t*)malloc(length * sizeof(uint64_t));
     data->i_meas = (float*)malloc(length * sizeof(float));
     data->i_alpha = (float*)malloc(length * sizeof(float));
     data->i_beta = (float*)malloc(length * sizeof(float));
