@@ -5,6 +5,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 typedef struct {
     float b0;          // Filter coefficient b0
@@ -12,6 +13,7 @@ typedef struct {
     float a1;          // Filter coefficient a1
     float prev_input;  // Previous input sample
     float prev_output; // Previous output sample
+    bool flag_init;
 } LowPassFilter1st;
 
 
@@ -36,17 +38,27 @@ static inline void lpf_set_value(LowPassFilter1st* filter, float prev_output, fl
     filter->prev_output = prev_output;
 }
 
-
+static inline void lpf_reset_init_flag(LowPassFilter1st* filter) {
+    filter->flag_init = false;
+}
 
 // Initialize the filter with sampling frequency (fs) and cutoff frequency (fc)
 static inline void lpf_init(LowPassFilter1st* filter, float fs, float fc) {
     lpf_create_coeff(filter, fc, fs);
     lpf_set_value(filter, 0, 0);
+    filter->flag_init = false;
 }
 
 
 // Process a single sample through the filter
 static inline float lpf_process(LowPassFilter1st* filter, float input) {
+
+    if(!filter->flag_init) {
+        lpf_set_value(filter, input, input);
+        filter->flag_init = true;
+        return input;
+    }
+
     float output = filter->b0 * input + 
                   filter->b1 * filter->prev_input - 
                   filter->a1 * filter->prev_output;

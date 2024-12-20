@@ -3,6 +3,8 @@
 
 #define FILTER_ORDER 2
 
+#include <stdbool.h>
+
 typedef struct {
     float fs;
     float base_freq;
@@ -17,10 +19,14 @@ typedef struct {
     float x2;  // Second previous input
     float y1;  // Previous output
     float y2;  // Second previous output
+    bool flag_init;
 } NotchFilter;
 
 void notch_filter_init(NotchFilter* filter, float fs, float base_freq, float ratio);
 void notch_filter_create(NotchFilter* filter);
 float notch_filter_apply(NotchFilter* filter, float input);
+static inline void notch_filter_reset_init_flag(NotchFilter* filter) {
+    filter->flag_init = false;
+}
 
 #endif // NOTCH_FILTER_H

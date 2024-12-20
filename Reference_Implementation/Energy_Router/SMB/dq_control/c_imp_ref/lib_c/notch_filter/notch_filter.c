@@ -17,7 +17,7 @@ void notch_filter_init(NotchFilter* filter, float fs, float base_freq, float rat
     filter->x2 = 0.0f;
     filter->y1 = 0.0f;
     filter->y2 = 0.0f;
-    
+    filter->flag_init = false;
     notch_filter_create(filter);
 }
 
@@ -38,7 +38,16 @@ void notch_filter_create(NotchFilter* filter) {
 }
 
 float notch_filter_apply(NotchFilter* filter, float input) {
-    // Direct form II difference equation
+
+    if(!filter->flag_init) {
+        filter->x1 = input;
+        filter->x2 = input;
+        filter->y1 = input;
+        filter->y2 = input;
+        filter->flag_init = true;
+        return input;
+    }
+
     float y0 = filter->b_coeffs[0] * input + filter->b_coeffs[1] * filter->x1 + filter->b_coeffs[2] * filter->x2
               - filter->a_coeffs[1] * filter->y1 - filter->a_coeffs[2] * filter->y2;
     
@@ -47,6 +56,5 @@ float notch_filter_apply(NotchFilter* filter, float input) {
     filter->x1 = input;
     filter->y2 = filter->y1;
     filter->y1 = y0;
-    
     return y0;
 }

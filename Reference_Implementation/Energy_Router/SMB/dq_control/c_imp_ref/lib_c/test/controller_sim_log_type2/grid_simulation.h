@@ -8,6 +8,7 @@
 #include "beta_transform/beta_transform_1p.h"
 #include "dq_transform/dq_transform_1phase.h"
 #include "dq_controller_pid/dq_controller_pid.h"
+#include "../../misc/wrap_angle/wrap_angle.h"
 #include "./plant_simulator.h"
 
 typedef struct {
