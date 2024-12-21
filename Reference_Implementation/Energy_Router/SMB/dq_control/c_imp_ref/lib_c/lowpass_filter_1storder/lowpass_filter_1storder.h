@@ -22,7 +22,9 @@ static inline void lpf_create_coeff(LowPassFilter1st* filter, float fc, float fs
 
     if(fc > fs/2.0f) {
         printf("LPF Error - Cutoff frequency is greater than half the sampling frequency\n");
+        #ifndef COMPILE_APP_Program
         exit(1);
+        #endif
     }
     // Pre-warp the cutoff frequency
     float wc = 2.0f * fs * tanf(pi * fc / fs);
@@ -71,3 +73,4 @@ static inline float lpf_process(LowPassFilter1st* filter, float input) {
 }
 
 #endif // LOWPASS_FILTER_1STORDER_H
+

@@ -48,6 +48,6 @@ void power_to_dq_current_ref(float apparent_power, float power_factor,
     float v_squared = v_mag * v_mag;
     
     // Generic equations for single-phase, any voltage orientation
-    *id_ref = 2.0 * (active_power * vd + reactive_power * vq) / v_squared;
-    *iq_ref = 2.0 * (active_power * vq - reactive_power * vd) / v_squared;
+    *id_ref = 2.0f * (active_power * vd + reactive_power * vq) / v_squared;
+    *iq_ref = 2.0f * (active_power * vq - reactive_power * vd) / v_squared;
 }

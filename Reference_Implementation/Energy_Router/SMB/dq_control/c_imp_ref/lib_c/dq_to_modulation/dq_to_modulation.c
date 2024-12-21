@@ -1,6 +1,11 @@
 #include "dq_to_modulation.h"
 #include <math.h>
 
+#ifndef M_PI
+#define M_PI 3.1415926f
+#endif
+
+
 modulation_result_t dq_to_modulation_calculate(dq_voltage_t dq_voltage) {
     modulation_result_t result = {0};    
     // Calculate magnitude of the voltage vector

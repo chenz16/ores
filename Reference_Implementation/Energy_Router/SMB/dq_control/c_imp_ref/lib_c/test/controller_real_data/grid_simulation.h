@@ -5,9 +5,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../../dq_to_modulation/dq_to_modulation.h"
-#include "beta_transform/beta_transform_1p.h"
-#include "dq_transform/dq_transform_1phase.h"
-#include "dq_controller_pid/dq_controller_pid.h"
+#include "../../beta_transform/beta_transform_1p.h"
+#include "../../dq_transform/dq_transform_1phase.h"
+#include "../../dq_controller_pid/dq_controller_pid.h"
 #include "./plant_simulator.h"
 #include "../../log_data_rw/log_data_rw.h"
 #include "../../misc/power_2dq_ref/power_2dq_ref.h"
