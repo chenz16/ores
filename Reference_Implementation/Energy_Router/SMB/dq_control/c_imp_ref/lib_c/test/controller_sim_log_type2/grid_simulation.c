@@ -10,7 +10,7 @@
 #include "../../lowpass_filter_1storder/lowpass_filter_1storder.h"
 #include "../../notch_filter/notch_filter.h"
 
-#define SET_D_AXIS_AS_COS 0
+#define SET_D_AXIS_AS_COS 1
 #define USE_NOTCH_FILTER 1
 
 void init_system_params(SystemParams* params) {
@@ -23,9 +23,9 @@ void init_system_params(SystemParams* params) {
     params->omega = 2.0f * M_PI * params->signal_freq;
     params->Vg_rms = 77.0f;
     params->I_desired_rms = 6.0f;
-    params->R = 1.0f;
+    params->R = 1.00f;
     params->L = 0.009f;
-    params->sim_time = 1.0f;
+    params->sim_time = 4.0f;
     printf("Debug Ts values:\n");
     printf("Ts_plant_sim: %.6f\n", params->Ts_plant_sim);
     printf("Ts_control: %.6f\n", params->Ts_control);
@@ -39,21 +39,21 @@ SimulationData* allocate_simulation_data(int length) {
     return init_log_data(length);
 }
 
-float k =0.5;
+float k =1.0f;
 
 void simulate_system(SystemParams* params, SimulationData* data) {
 
     // Scale integral gains for high frequency sampling
     DQController_Params controller_params = {
         .kp_d = 1.0f * k,
-        .ki_d = 40.0f * k, // params->ratio_cntlFreqReduction,
+        .ki_d = 3.0f * k, // params->ratio_cntlFreqReduction,
         .kp_q = 1.0f * k,
-        .ki_q = 40.0f * k,  // params->ratio_cntlFreqReduction,
+        .ki_q = 3.0f * k,  // params->ratio_cntlFreqReduction,
         .omega = params->omega,
         .Ts = params->Ts_control,
-        .integral_max = 100.0f,    // Increased from 300.0
-        .integral_min = -100.0f,   // Increased from -300.0
-        .R = 1.0f,
+        .integral_max = 300.0f,    // Increased from 300.0
+        .integral_min = -300.0f,   // Increased from -300.0
+        .R = 0.0f,
         .L = 0.009f
     };
 
@@ -284,9 +284,9 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         // Add these lines before the fprintf section
         data->v_cntl_peak[n] = sqrtf(dq_voltage.vd * dq_voltage.vd + dq_voltage.vq * dq_voltage.vq);
         data->v_dc[n] = dq_voltage.vdc;  // This is 400.0f as defined earlier
-        data->v_cntl_tgt_phase[n] = atan2f(dq_voltage.vq, dq_voltage.vd) + theta_dq;
+        data->v_cntl_tgt_phase[n] = atan2f(dq_voltage.vq, dq_voltage.vd) + theta;
         // Current phase estimation (phase from dq + reference frame angle)
-        data->i_phase_est[n] = atan2f(data->i_raw_q[n], data->i_raw_d[n]) + theta_dq;
+        data->i_phase_est[n] = atan2f(data->i_raw_q[n], data->i_raw_d[n]) + theta;
 
         // SMB measurements (equal to control values)
         data->v_smb_meas[n] = data->v_cntl_alpha[n];
