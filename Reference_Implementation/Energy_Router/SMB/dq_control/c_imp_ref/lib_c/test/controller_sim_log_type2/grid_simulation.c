@@ -11,10 +11,11 @@
 #include "../../notch_filter/notch_filter.h"
 
 #define SET_D_AXIS_AS_COS 1
+#define USE_NOTCH_FILTER 0
 
 void init_system_params(SystemParams* params) {
     params->signal_freq = 50.0f;
-    params->plant_sim_freq = 1000000.0f; //
+    params->plant_sim_freq = 100000.0f; //
     params->control_update_freq = 1000.0f; // 这是控制理想频率，跟sensing频率一致， 实际按照ratio_sens2control计算
     params->ratio_cntlFreqReduction = 20; // control 频率是 sensing 频率的 1/ratio_cntlFreqReduction
     params->Ts_plant_sim = 1.0f / params->plant_sim_freq;
@@ -24,7 +25,7 @@ void init_system_params(SystemParams* params) {
     params->I_desired_rms = 6.0f;
     params->R = 1.0f;
     params->L = 0.009f;
-    params->sim_time = 0.3f;
+    params->sim_time = 1.0f;
     printf("Debug Ts values:\n");
     printf("Ts_plant_sim: %.6f\n", params->Ts_plant_sim);
     printf("Ts_control: %.6f\n", params->Ts_control);
@@ -38,7 +39,7 @@ SimulationData* allocate_simulation_data(int length) {
     return init_log_data(length);
 }
 
-float k = 3.0;
+float k =0.5;
 
 void simulate_system(SystemParams* params, SimulationData* data) {
 
@@ -52,8 +53,8 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         .Ts = params->Ts_control,
         .integral_max = 100.0f,    // Increased from 300.0
         .integral_min = -100.0f,   // Increased from -300.0
-        .R = params->R,
-        .L = params->L
+        .R = 1.0f,
+        .L = 0.009f
     };
 
     // Rest of initialization remains the same
@@ -97,13 +98,18 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     NotchFilter notch_d, notch_q;
     
     // Initialize low pass filters (e.g., 500Hz cutoff frequency)
-    float lpf_cutoff_freq = 100.0f;  // Reduced from 500Hz to provide better filtering
+    float lpf_cutoff_freq = 50.0f;  // Reduced from 500Hz to provide better filtering
     lpf_init(&lpf_d, params->control_update_freq, lpf_cutoff_freq);
     lpf_init(&lpf_q, params->control_update_freq, lpf_cutoff_freq);
     
     // Initialize notch filters for 50Hz
-    notch_filter_init(&notch_d, params->control_update_freq, params->signal_freq, 0.90f);  // Changed from 0.98
-    notch_filter_init(&notch_q, params->control_update_freq, params->signal_freq, 0.90f);  // Changed from 0.98
+    notch_filter_init(&notch_d, params->control_update_freq, params->signal_freq, 0.98f);  // Changed from 0.98
+    notch_filter_init(&notch_q, params->control_update_freq, params->signal_freq, 0.98f);  // Changed from 0.98
+
+    // Add debug prints for filter coefficients
+    // printf("Notch Filter Coefficients:\n");
+    // printf("b0: %.6f, b1: %.6f, b2: %.6f\n", notch_d.b0, notch_d.b1, notch_d.b2);
+    // printf("a1: %.6f, a2: %.6f\n", notch_d.a1, notch_d.a2);
 
     // Set reference once before the loop
 
@@ -159,8 +165,16 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         data->i_ref_d[n] = i_ref_peak;
         data->i_ref_q[n] = 0.0f;
         
-        data->i_notch_d[n] = notch_filter_apply(&notch_d, data->i_raw_d[n]);
-        data->i_notch_q[n] = notch_filter_apply(&notch_q, data->i_raw_q[n]);
+        if (USE_NOTCH_FILTER)
+        {
+            data->i_notch_d[n] = notch_filter_apply(&notch_d, data->i_raw_d[n]);
+            data->i_notch_q[n] = notch_filter_apply(&notch_q, data->i_raw_q[n]);
+        }
+        else
+        {
+            data->i_notch_d[n] = data->i_raw_d[n];
+            data->i_notch_q[n] = data->i_raw_q[n];
+        }
         // data->i_notch_d[n] = data->i_raw_d[n];
         // data->i_notch_q[n] = data->i_raw_q[n];
         
