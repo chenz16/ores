@@ -26,15 +26,29 @@ void notch_filter_create(NotchFilter* filter) {
     float cos_w0 = cosf(w0);
     float r = filter->ratio;  // Pole radius, controls notch width
     
-    // Simple notch filter coefficients
-    filter->b_coeffs[0] = 1.0f;                // b0
-    filter->b_coeffs[1] = -2.0f * cos_w0;      // b1
-    filter->b_coeffs[2] = 1.0f;                // b2
+    // Calculate DC gain for normalization
+    float dc_gain = (1.0f - 2.0f*cos_w0 + 1.0f)/(1.0f - 2.0f*r*cos_w0 + r*r);
+    float scale = 1.0f/dc_gain;  // Normalization factor
     
-    filter->a_coeffs[0] = 1.0f;                // a0
-    filter->a_coeffs[1] = -2.0f * r * cos_w0;  // a1
-    filter->a_coeffs[2] = r * r;               // a2
+    // Normalized notch filter coefficients
+    filter->b_coeffs[0] = scale * 1.0f;                // b0
+    filter->b_coeffs[1] = scale * (-2.0f * cos_w0);    // b1
+    filter->b_coeffs[2] = scale * 1.0f;                // b2
     
+    filter->a_coeffs[0] = 1.0f;                        // a0
+    filter->a_coeffs[1] = -2.0f * r * cos_w0;         // a1
+    filter->a_coeffs[2] = r * r;                       // a2
+    
+    // Debug prints
+    // printf("Notch Filter Parameters:\n");
+    // printf("fs: %.1f Hz, base_freq: %.1f Hz, ratio: %.3f\n", 
+    //        filter->fs, filter->base_freq, filter->ratio);
+    // printf("w0: %.6f, cos_w0: %.6f\n", w0, cos_w0);
+    // printf("Original DC gain = %.6f\n", dc_gain);
+    // printf("Normalized DC gain = %.6f\n", 
+    //        (scale*(1.0f - 2.0f*cos_w0 + 1.0f))/(1.0f - 2.0f*r*cos_w0 + r*r));
+
+    // exit(0);
 }
 
 float notch_filter_apply(NotchFilter* filter, float input) {

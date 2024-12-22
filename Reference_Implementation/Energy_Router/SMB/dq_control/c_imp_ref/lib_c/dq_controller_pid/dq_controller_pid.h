@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#define CONTROLLER_SIGN 1.0
+
 // Controller parameters structure
 typedef struct {
     float kp_d;          // Proportional gain for d-axis
