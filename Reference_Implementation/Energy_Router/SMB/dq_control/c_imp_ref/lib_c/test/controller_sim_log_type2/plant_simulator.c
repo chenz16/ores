@@ -35,8 +35,8 @@ float PlantSimulator_Update(PlantState* state, PlantParams* params,
             v_grid_t = Vg_mag *sinf(theta + 2*M_PI * plant_freq * params->Ts * i) ;
         }
 
-        // float di_dt1 = (v_grid_t - v_inverter - params->R * state->current) / params->L;
-        float di_dt1 = (v_inverter - v_grid_t - params->R * state->current) / params->L;
+        float di_dt1 = (v_grid_t - v_inverter - params->R * state->current) / params->L;
+        // float di_dt1 = (v_inverter - v_grid_t - params->R * state->current) / params->L;
 
         state->current += di_dt1 * params->Ts;
     }

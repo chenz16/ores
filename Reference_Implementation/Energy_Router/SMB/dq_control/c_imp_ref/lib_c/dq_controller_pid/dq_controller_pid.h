@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#define CONTROLLER_SIGN 1.0f
+#define CONTROLLER_SIGN -1.0
 
 // Controller parameters structure
 typedef struct {

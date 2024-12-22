@@ -10,8 +10,8 @@
 #include "../../lowpass_filter_1storder/lowpass_filter_1storder.h"
 #include "../../notch_filter/notch_filter.h"
 
-#define SET_D_AXIS_AS_COS 1
-#define USE_NOTCH_FILTER 0
+#define SET_D_AXIS_AS_COS 0
+#define USE_NOTCH_FILTER 1
 
 void init_system_params(SystemParams* params) {
     params->signal_freq = 50.0f;

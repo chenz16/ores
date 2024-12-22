@@ -38,10 +38,8 @@ void DQController_Update(DQController_State* state, DQController_Params* params)
     if (state->integral_d < params->integral_min) state->integral_d = params->integral_min;
     
     // Calculate feedback and feedforward components separately
-    state->vd_fb = params->kp_d * error_d + params->ki_d * state->integral_d;
-    state->vd_fb *= CONTROLLER_SIGN;
-    state->vd_ff = - params->omega * params->L * state->iq_meas - params->R * state->id_meas;
-    state->vd_ff *= CONTROLLER_SIGN;
+    state->vd_fb = (params->kp_d * error_d + params->ki_d * state->integral_d) * CONTROLLER_SIGN;
+    state->vd_ff = (- params->R * state->id_meas - params->omega * params->L * state->iq_meas ) * CONTROLLER_SIGN;
     state->vd_ff += state->vd_grid;
     
     state->vd_out = state->vd_fb + state->vd_ff;
@@ -55,10 +53,8 @@ void DQController_Update(DQController_State* state, DQController_Params* params)
     if (state->integral_q < params->integral_min) state->integral_q = params->integral_min;
     
     // Calculate feedback and feedforward components separately
-    state->vq_fb = params->kp_q * error_q + params->ki_q * state->integral_q;
-    state->vq_fb *= CONTROLLER_SIGN;
-    state->vq_ff = state->vq_grid + params->omega * params->L * state->id_meas - params->R * state->iq_meas;
-    state->vq_ff *= CONTROLLER_SIGN;
+    state->vq_fb = (params->kp_q * error_q + params->ki_q * state->integral_q) * CONTROLLER_SIGN;
+    state->vq_ff = (- params->R * state->iq_meas + params->omega * params->L * state->id_meas ) * CONTROLLER_SIGN;
     state->vq_ff += state->vq_grid;
     state->vq_out = state->vq_fb + state->vq_ff;
 
