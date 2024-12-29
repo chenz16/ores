@@ -20,12 +20,12 @@ void init_system_params(SystemParams* params) {
     params->signal_freq = 50.0f;
     params->plant_sim_freq = 100000.0f;
     params->control_update_freq = 1000.0f;
-    params->ratio_cntlFreqReduction = 500;
+    params->ratio_cntlFreqReduction = 20;
     params->Ts_plant_sim = 1.0f / params->plant_sim_freq;
     params->Ts_control = 1.0f / params->control_update_freq;
     params->omega = 2.0f * M_PI * params->signal_freq;
     params->I_desired_rms = 6.0f;
-    params->V_desired_rms = 120.0f * sqrtf(2.0f);
+    params->V_desired_rms = 70.0f;
     params->R = 0.43f;
     params->L = 0.009f;
     params->sim_time = 2.4f;
@@ -48,10 +48,10 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     
     // Modify controller parameters - increase proportional gain and reduce integral gain
     DQControllerVoltFeedback_Params v_controller_params = {
-        .kp_d = 0.5f,     // Increased from 0.0001
-        .ki_d = 0.5f/params->ratio_cntlFreqReduction,   // Reduced from 0.00005
-        .kp_q = 0.5f,     // Increased from 0.0001
-        .ki_q = 0.5f/params->ratio_cntlFreqReduction,   // Reduced from 0.00005
+        .kp_d = 1.0f,     // Increased from 0.0001
+        .ki_d = 1.0f/params->ratio_cntlFreqReduction,   // Reduced from 0.00005
+        .kp_q = 1.0f,     // Increased from 0.0001
+        .ki_q = 1.0f/params->ratio_cntlFreqReduction,   // Reduced from 0.00005
         .Ts = params->Ts_control,
         .integral_max = 100.0f,    // Reduced from 50.0
         .integral_min = -100.0f    // Reduced from -50.0
@@ -88,14 +88,16 @@ void simulate_system(SystemParams* params, SimulationData* data) {
     float vq_last = 0.0f;
 
     for (int n = 0; n < LEN; n++) {
-        /////////////基本参数设置///////////////////////////
         data->time_us[n] = (uint64_t)(n * params->Ts_control * 1000000.0f);
         float t = data->time_us[n] / 1000000.0f;
-        float theta = params->omega * t;  // 自动生成目标相位
-        float theta_dq = theta - M_PI_2; // 按照目标相位的正弦波进行dq变换
+        float theta = params->omega * t;
+        float theta_dq = theta - M_PI_2;
+        
+        data->i_phase_est[n] = theta;
+        data->v_cntl_tgt_phase[n] = theta;
 
         float v_meas_peak = sqrtf(data->v_grid_alpha[n] * data->v_grid_alpha[n] + data->v_grid_beta[n] * data->v_grid_beta[n]);
-        
+
         
         ////////////////////////////控制/////////////////////////////////////
         float vd_meas, vq_meas;
@@ -129,8 +131,14 @@ void simulate_system(SystemParams* params, SimulationData* data) {
        
         ///调制参数跟新：输入为电压dq， 输出为调制系数相位偏移
         modulation_result_t mod_result = dq_to_modulation_calculate(dq_voltage);
-       dq_voltage.vd = mod_result.vd_adjust;
-       dq_voltage.vq = mod_result.vq_adjust;
+        dq_voltage.vd = mod_result.vd_adjust;
+        dq_voltage.vq = mod_result.vq_adjust;
+
+        // Add assignments to data structure
+        data->v_dc[n] = dq_voltage.vdc;
+        data->v_cntl_mod_index[n] = mod_result.index;
+        printf("mod_index: %f\n", data->v_cntl_mod_index[n]);
+        data->v_cntl_phase_shift[n] = mod_result.phase_shift;
        /////////////////////电压反馈控制结束////////////////////////////////////////////
        
        //////////////////////////PWM控制仿真///////////////////////////////////////////
@@ -181,6 +189,20 @@ void simulate_system(SystemParams* params, SimulationData* data) {
         // Update data storage - if you need to store these values
         data->v_grid_d[n] = vd_meas;
         data->v_grid_q[n] = vq_meas;
+
+        // Store phase information
+        data->i_phase_est[n] = theta;
+        data->v_cntl_tgt_phase[n] = theta_dq;
+
+        // Calculate and store alpha-beta components
+        float v_cntl_alpha, v_cntl_beta;
+        inverse_dq_transform_1phase(v_d, v_q, theta_dq, &v_cntl_alpha, &v_cntl_beta);
+        data->v_cntl_alpha[n] = v_cntl_alpha;
+        data->v_cntl_beta[n] = v_cntl_beta;
+
+        // Calculate and store modulation metrics
+        data->v_cntl_peak[n] = sqrtf(v_cntl_alpha * v_cntl_alpha + v_cntl_beta * v_cntl_beta);
+        data->v_cntl_valid[n] = (data->v_cntl_peak[n] <= data->v_dc[n]) ? 1.0f : 0.0f;
     /////////////////////////PWM控制结束//////////////////////////////////////
 
     }
@@ -210,13 +232,10 @@ void save_results_to_file(const char* filename, SimulationData* data) {
                "v_cntl_q_ff,v_cntl_q_fd,v_cntl_alpha,v_cntl_beta,v_cntl_mod_index,"
                "v_cntl_phase_shift,v_cntl_valid,v_cntl_peak,v_dc\n");
 
-    // Define DC voltage (could be made dynamic if needed)
-    const float V_DC = 400.0f;  // Example: 400V DC bus
-
     // Write data rows
     for (int n = 0; n < data->length; n++) {
         float v_cntl_alpha, v_cntl_beta;
-        float phase_est = GRID_OMEGA * (data->time_us[n] / 1000000.0f);
+        float phase_est = data->i_phase_est[n];
         float target_phase = phase_est - M_PI_2;
 
         inverse_dq_transform_1phase(
@@ -259,11 +278,11 @@ void save_results_to_file(const char* filename, SimulationData* data) {
                (double)data->v_cntl_d[n], 0.0,
                (double)data->v_cntl_q[n], 0.0,
                (double)v_cntl_alpha, (double)v_cntl_beta,
-               (double)mod_index,
+               (double)data->v_cntl_mod_index[n],
                (double)phase_shift,
                valid,
                (double)v_cntl_peak,
-               (double)V_DC);
+               (double)data->v_dc[n]);
     }
 
     fclose(fp);
