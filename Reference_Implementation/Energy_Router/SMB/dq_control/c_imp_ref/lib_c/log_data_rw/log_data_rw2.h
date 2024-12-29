@@ -35,7 +35,7 @@ struct LogData {
     float *v_grid_d;
     float *v_grid_q;
     float *v_grid_phase;
-
+    
     float *v_smb_meas;
     float *v_smb_alpha;
     float *v_smb_beta;
@@ -58,6 +58,13 @@ struct LogData {
     float *v_cntl_valid;
     float *v_cntl_alpha;
     float *v_cntl_beta;
+
+
+    float *v_ref;
+    float *v_ref_d;
+    float *v_ref_q;
+    float *v_ref_alpha;
+    float *v_ref_beta;
 
 
 };
