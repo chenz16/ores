@@ -21,12 +21,17 @@ typedef struct {
 
 // Controller state structure
 typedef struct {
+
     float id_ref;        // Reference d-axis current
     float iq_ref;        // Reference q-axis current
     float id_meas;       // Measured d-axis current
     float iq_meas;       // Measured q-axis current
-    float vd_grid;       // Grid voltage d component
-    float vq_grid;       // Grid voltage q component
+
+    float vd_ref;
+    float vq_ref;
+    float vd_meas;       // Load voltage d component
+    float vq_meas;       // Load voltage q component
+
     float integral_d;    // Integral term for d-axis
     float integral_q;    // Integral term for q-axis
     float vd_out;        // Output voltage d component

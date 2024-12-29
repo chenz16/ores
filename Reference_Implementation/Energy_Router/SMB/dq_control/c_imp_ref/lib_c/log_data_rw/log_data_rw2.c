@@ -94,7 +94,7 @@ struct LogData* load_log_data(const char* filename) {
 
     // Read data
     for (int i = 0; i < data->length; i++) {
-        if (fscanf(file, "%lu,%lu,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",
+        if (fscanf(file, "%lu,%lu,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f,%f",
             &data->id[i], &data->time_us[i],
             &data->i_meas[i], &data->i_alpha[i], &data->i_beta[i],
             &data->i_raw_d[i], &data->i_raw_q[i],
@@ -112,7 +112,9 @@ struct LogData* load_log_data(const char* filename) {
             &data->v_cntl_peak[i], &data->v_dc[i],
             &data->v_cntl_mod_index[i], &data->v_cntl_phase_shift[i],
             &data->v_cntl_tgt_phase[i], &data->v_cntl_valid[i],
-            &data->v_cntl_alpha[i], &data->v_cntl_beta[i]) != 43) {
+            &data->v_cntl_alpha[i], &data->v_cntl_beta[i],
+            &data->v_ref[i], &data->v_ref_d[i], &data->v_ref_q[i],
+            &data->v_ref_alpha[i], &data->v_ref_beta[i]) != 48) {
             
             fprintf(stderr, "Error reading data at line %d\n", i + 1);
             cleanup_data(data);
@@ -171,6 +173,11 @@ void cleanup_data(struct LogData* data) {
     free(data->i_ref_q);
     free(data->i_ref_alpha);
     free(data->i_ref_beta);
+    free(data->v_ref);
+    free(data->v_ref_d);
+    free(data->v_ref_q);
+    free(data->v_ref_alpha);
+    free(data->v_ref_beta);
 
     // Free the structure itself
     free(data);
@@ -234,7 +241,18 @@ struct LogData* init_log_data(int length) {
     data->i_ref_alpha = (float*)malloc(length * sizeof(float));
     data->i_ref_beta = (float*)malloc(length * sizeof(float));
     data->i_ref = (float*)malloc(length * sizeof(float));
+    data->v_ref = (float*)calloc(length, sizeof(float));
+    data->v_ref_d = (float*)calloc(length, sizeof(float));
+    data->v_ref_q = (float*)calloc(length, sizeof(float));
+    data->v_ref_alpha = (float*)calloc(length, sizeof(float));
+    data->v_ref_beta = (float*)calloc(length, sizeof(float));
 
+    // Don't forget to add null checks:
+    if (!data->v_ref || !data->v_ref_d || !data->v_ref_q || 
+        !data->v_ref_alpha || !data->v_ref_beta) {
+        cleanup_data(data);
+        return NULL;
+    }
 
     return data;
 }
